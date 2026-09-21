@@ -29,6 +29,7 @@ export function applyCommand(core, m, post) {
         case 'waterInView': x.ts_set_water_in_view(m.amount, m.pan, m.waves); break;
         case 'hikerPans': for (const [ch, pan] of m.pans) x.ts_set_hiker_screen_pan(ch, pan); break;
         case 'splash': x.ts_push_splash(m.pan); break;
+        case 'key': reply(x.ts_current_key()); break;
         case 'treeDensity': x.ts_set_tree_density(m.value); break;
         case 'ambient': x.ts_set_ambient_temperature(m.celsius); break;
         case 'tempo': x.ts_set_tempo(m.valid ? 1 : 0, m.bpm, m.ppq); break;

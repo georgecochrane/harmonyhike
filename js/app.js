@@ -20,7 +20,7 @@ const WORLD_MARGIN = 5;
 const DEFAULTS = {
     numHikers: 6, speed: 35, noteSpeed: 0, gaitMatch: 15, simulationRate: 20, animalDensity: 0.3, scaleType: 3, rootNote: 0, minOctave: 3, maxOctave: 5,
     noteLength: 100, noteLengthRandom: 0, favorRoot: 0, velocity: 100, velocityRandom: 0, paused: 0, arpOn: 0, arpPattern: 0, arpRandom: 0, arpRate: 4,
-    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60,
+    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60, keyMode: 0, keyMinutes: 3,
     // (web only)
     diameterFeet: 5280, terrainDetail: 2, realLight: 0, cloudOpacity: 50,
     showTrees: 1, treeDensity: 60, autoRotate: 0, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
@@ -28,7 +28,7 @@ const DEFAULTS = {
 };
 const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'noteLength', 'noteLengthRandom',
     'favorRoot', 'velocity', 'velocityRandom', 'paused', 'arpOn', 'arpPattern', 'arpRandom', 'arpRate', 'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode',
-    'soundVolume', 'animalLevel', 'waterLevel'];
+    'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes'];
 
 window.__errors = []; window.addEventListener('error', e => window.__errors.push(e.message)); window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
 const settings = { ...DEFAULTS };
@@ -155,6 +155,10 @@ function buildControls() {
                 R('Favor Root', { min: 0, max: 100, format: offOr('%') }, 'favorRoot')(),
                 R('Min Octave', { min: -1, max: 9, format: octaveName }, 'minOctave')(),
                 R('Max Octave', { min: -1, max: 9, format: octaveName }, 'maxOctave')()] },
+            { title: 'Key changes', rows: () => [
+                selectRow('Key changes', ['Off', 'Gentle (related keys)', 'Adventurous (any key)'], S('keyMode'), P('keyMode')),
+                sliderRow('Every', { min: 0.5, max: 10, step: 0.1, format: v => v.toFixed(1) + ' min' }, S('keyMinutes'), P('keyMinutes')),
+                el('div', { class: 'row toggle' }, el('span', { text: 'Key now' }), el('span', { id: 'key-now', text: '', style: 'color:var(--dim)' }))] },
             { title: 'Expression', rows: () => [
                 R('Note Length', { min: 5, max: 100, format: v => v >= 100 ? 'Legato' : Math.round(v) + '%' }, 'noteLength')(),
                 R('Length Random', { min: 0, max: 100, format: offOr('%') }, 'noteLengthRandom')(),
@@ -327,6 +331,7 @@ async function boot() {
     setInterval(() => {
         if (settings.syncOn) { const t = midi.tempo(); engine.send('tempo', { valid: t.valid, bpm: t.bpm, ppq: t.ppq }); const s = $('sync-status'); if (s) s.textContent = t.valid ? `Following MIDI clock, ${t.bpm.toFixed(1)} BPM` : 'Waiting for a clock...'; }
     }, 40);
+    setInterval(async () => { if (!engine.ready) return; try { const k = await engine.ask('key'), e = $('key-now'); if (e) e.textContent = `${NOTE_NAMES[k & 15]} ${SCALES[k >> 4].toLowerCase()}`; } catch (err) { /* not ready */ } }, 1000);
     refreshWeather();
     setInterval(refreshWeather, 15 * 60 * 1000);
 }
