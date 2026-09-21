@@ -70,13 +70,13 @@ async function createCore (wasmBytes, sampleRate) {
         },
 
         // Where the trees go on a land: a Float32Array of 6 numbers per tree (gridX, gridY, size, kind, hue, phase). Same code the simulation walks around.
-        generateTrees (lat, lon, radiusMeters, res, heights, classes, minH, maxH) {
+        generateTrees (lat, lon, radiusMeters, res, heights, classes, minH, maxH, density = 0.6, windowGX = 0, windowGY = 0, windowRadiusGrid = 0, latticeRadiusMeters = 0) {
             const hp = x.ts_alloc (heights.length * 4); f32 (hp, heights.length).set (heights);
             const cp = x.ts_alloc (classes.length); u8 (cp, classes.length).set (classes);
             let capacity = 3000, result = null;
             for (;;) {
                 const op = x.ts_alloc (capacity * 6 * 4);
-                const n = x.ts_generate_trees (lat, lon, radiusMeters, res, hp, cp, minH, maxH, op, capacity);
+                const n = x.ts_generate_trees (lat, lon, radiusMeters, res, hp, cp, minH, maxH, density, windowGX, windowGY, windowRadiusGrid, latticeRadiusMeters, op, capacity);
                 if (n >= 0) result = Float32Array.from (f32 (op, n * 6));
                 x.ts_free (op);
                 if (n >= 0) break;
@@ -171,6 +171,7 @@ function applyCommand(core, m, post) {
         case 'waterInView': x.ts_set_water_in_view(m.amount, m.pan, m.waves); break;
         case 'hikerPans': for (const [ch, pan] of m.pans) x.ts_set_hiker_screen_pan(ch, pan); break;
         case 'splash': x.ts_push_splash(m.pan); break;
+        case 'treeDensity': x.ts_set_tree_density(m.value); break;
         case 'ambient': x.ts_set_ambient_temperature(m.celsius); break;
         case 'tempo': x.ts_set_tempo(m.valid ? 1 : 0, m.bpm, m.ppq); break;
         case 'exportHikers': reply(c.exportHikers()); break;

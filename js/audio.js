@@ -73,11 +73,12 @@ export class Engine {
     }
 
     // The forest for a land surface ({ lat, lon, radius, res, heights, classes, minH, maxH }): 6 numbers per tree, or null when it cannot be made yet.
-    generateTrees(s) {
+    // `area` (optional): { density 0..1, gx, gy, radiusGrid, latticeRadius }: only the trees in that circle of the grid, laid out as for a land latticeRadius metres across.
+    generateTrees(s, area = {}) {
         const core = this.treeCore || this.core;
         if (!core || !s.classes || !s.heights) return null;
-        let lo = Infinity, hi = -Infinity; for (let i = 0; i < s.heights.length; i += 7) { const h = s.heights[i]; if (h < lo) lo = h; if (h > hi) hi = h; }
-        return core.generateTrees(s.lat, s.lon, s.radius, s.res, s.heights, s.classes, lo, hi);
+        if (s.minMax === undefined) { let lo = Infinity, hi = -Infinity; for (let i = 0; i < s.heights.length; i += 7) { const h = s.heights[i]; if (h < lo) lo = h; if (h > hi) hi = h; } s.minMax = [lo, hi]; }
+        return core.generateTrees(s.lat, s.lon, s.radius, s.res, s.heights, s.classes, s.minMax[0], s.minMax[1], area.density ?? 0.6, area.gx ?? 0, area.gy ?? 0, area.radiusGrid ?? 0, area.latticeRadius ?? 0);
     }
 
     receive(m) {

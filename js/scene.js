@@ -87,8 +87,16 @@ Object.assign(View.prototype, {
     buildTrees(f, now) {
         const surface = f.surface;
         if (!surface.classes) return null;
-        if (surface.trees === undefined) surface.trees = this.treeGen ? this.treeGen(surface) : null;
-        const list = surface.trees;
+        // The forest for what is on show, laid out for this window's size (so the wide copy of the land is as full as the small one) and remade only when
+        // the window has moved or resized enough, or the density changed, so the trees don't flicker as the map moves.
+        const density = this.treeDensity ?? 0.6, cache = this.treeCache, r = f.gridPerUnit, lattice = f.windowRadius;
+        const stale = !cache || cache.surface !== surface || cache.density !== density || Math.hypot(f.centreGX - cache.gx, f.centreGY - cache.gy) > 0.25 * cache.r
+            || r > cache.r / 1.5 * 1.25 || r < cache.r / 1.5 * 0.8 || lattice > cache.lattice * 1.25 || lattice < cache.lattice * 0.8;
+        if (stale) {
+            const list = this.treeGen ? this.treeGen(surface, { density, gx: f.centreGX, gy: f.centreGY, radiusGrid: 1.5 * r, latticeRadius: lattice }) : null;
+            this.treeCache = { surface, density, gx: f.centreGX, gy: f.centreGY, r: 1.5 * r, lattice, list };
+        }
+        const list = this.treeCache.list;
         if (!list || !list.length) return null;
         const n = list.length / 6, leaves = leafState(this.coarse.lat), w = this.weather || { windMetersPerSecond: 3, windFromDegrees: 270 };
         const toward = (w.windFromDegrees + 180) * Math.PI / 180;
