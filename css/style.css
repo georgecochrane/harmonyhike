@@ -7,6 +7,7 @@ body{background:radial-gradient(1200px 700px at 12% 100%,rgba(61,127,209,.35),tr
 button,select,input[type=text]{font:inherit;color:var(--fg);background:rgba(255,255,255,.09);border:1px solid var(--line);border-top-color:rgba(255,255,255,.4);border-radius:9px;padding:5px 11px;cursor:pointer}
 button:hover,select:hover{background:rgba(255,255,255,.16)}
 button.on{background:rgba(61,127,209,.7)}
+#pause{background:rgba(196,62,48,.78)}#pause:hover{background:rgba(214,78,62,.85)}#pause.on{background:rgba(46,158,91,.82)}#pause.on:hover{background:rgba(60,178,106,.9)}
 button.big{font-size:17px;padding:10px 40px;background:linear-gradient(180deg,rgba(90,162,255,.9),rgba(61,127,209,.9))}
 input[type=text]{cursor:text}
 select option{color:#111}

@@ -231,6 +231,7 @@ export class View {
             }
             return;
         }
+        if (hit && this.selected.has(hit)) { this.dragging = { ...base, hiker: hit, fromRotate: true }; return; }   // a selected hiker can be dragged, even here
         this.dragging = { ...base, orbit: true, clickedHiker: hit };
     }
 
@@ -307,7 +308,7 @@ export class View {
             this.selected = next; this.emit('selection', [...next]);
             this.marquee = null;
         } else if (d.hiker) {
-            if (!d.moved) this.emit('removeHiker', d.hiker);
+            if (!d.moved) { if (d.fromRotate) this.emit('previewNote', d.hiker); else this.emit('removeHiker', d.hiker); }
         } else if (d.orbit && !d.moved && d.clickedHiker) {
             this.emit('previewNote', d.clickedHiker);
             if (this.touch) { this.selected = new Set([d.clickedHiker]); this.emit('selection', [d.clickedHiker]); }   // a tap on a hiker also picks it

@@ -18,7 +18,7 @@ const FEET = 0.3048;
 const WORLD_MARGIN = 5;
 
 const DEFAULTS = {
-    numHikers: 6, speed: 35, noteSpeed: 0, gaitMatch: 15, simulationRate: 20, animalDensity: 0.3, scaleType: 3, rootNote: 0, minOctave: 3, maxOctave: 4,
+    numHikers: 6, speed: 35, noteSpeed: 0, gaitMatch: 15, simulationRate: 20, animalDensity: 0.3, scaleType: 3, rootNote: 0, minOctave: 3, maxOctave: 5,
     noteLength: 100, noteLengthRandom: 0, favorRoot: 0, velocity: 100, velocityRandom: 0, paused: 0, arpOn: 0, arpPattern: 0, arpRandom: 0, arpRate: 4,
     arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60,
     // (web only)
@@ -34,6 +34,7 @@ window.__errors = []; window.addEventListener('error', e => window.__errors.push
 const settings = { ...DEFAULTS };
 let firstRun = true;
 try { const stored = localStorage.getItem('harmonyhike.settings'); if (stored) { Object.assign(settings, JSON.parse(stored)); firstRun = false; } } catch (e) { /* first run */ }
+settings.paused = 0;   // always start playing, even if it was paused when last closed
 if (firstRun) Object.assign(settings, randomPlace());   // a named, lovely place to begin with
 const save = () => { try { localStorage.setItem('harmonyhike.settings', JSON.stringify(settings)); } catch (e) { /* private window */ } };
 
