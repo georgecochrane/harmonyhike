@@ -6,7 +6,7 @@ import './scene.js';
 import { TerrainSource, proceduralHeights, geocode, fetchWeather, parseLatLon } from './terrain.js';
 import { MidiBridge } from './midi.js';
 import { el, buildPages, sliderRow, selectRow, toggleRow, buttonRow, twoSelectRow, NOTE_NAMES, SCALES, DIVISIONS } from './ui.js';
-import { openSoundDesigner, loadSavedSounds } from './designer.js';
+import { openSoundDesigner, loadSavedSounds, currentSounds } from './designer.js';
 import { openAbout, openTip } from './about.js';
 import { openMidiHelp } from './midihelp.js';
 import { runSelfTest } from './selftest.js';
@@ -36,6 +36,9 @@ let firstRun = true;
 try { const stored = localStorage.getItem('harmonyhike.settings'); if (stored) { Object.assign(settings, JSON.parse(stored)); firstRun = false; } } catch (e) { /* first run */ }
 settings.paused = 0;   // always start playing, even if it was paused when last closed
 if (firstRun) Object.assign(settings, randomPlace());   // a named, lovely place to begin with
+// What every new visitor starts with, if assets/defaults.json exists ({ settings, sounds }: the "Copy my settings" text). Saved settings in this browser win.
+const shippedDefaults = fetch('assets/defaults.json').then(r => r.ok ? r.json() : null).catch(() => null);
+let shipped = null;
 const save = () => { try { localStorage.setItem('harmonyhike.settings', JSON.stringify(settings)); } catch (e) { /* private window */ } };
 
 const engine = new Engine(), midi = new MidiBridge(), terrain = new TerrainSource();
@@ -180,7 +183,7 @@ function buildControls() {
             { title: 'Defaults', rows: () => [
                 buttonRow('', 'Copy my settings', async () => {
                     const { hikers, lat, lon, location, midiOut, ...mine } = settings;
-                    const text = JSON.stringify({ settings: mine, sounds: (() => { try { return JSON.parse(localStorage.getItem('harmonyhike.sounds') || 'null'); } catch (e) { return null; } })() });
+                    const text = JSON.stringify({ settings: mine, sounds: currentSounds(engine) });   // (all the sound presets and the reverb come too)
                     try { await navigator.clipboard.writeText(text); $('status').textContent = 'Settings copied - paste them to whoever sets the defaults'; } catch (e) { prompt('Copy these settings:', text); }
                 }),
                 buttonRow('', 'Reset everything', () => { if (confirm('Put every setting and sound back to how HarmonyHike first starts?')) { try { localStorage.removeItem('harmonyhike.settings'); localStorage.removeItem('harmonyhike.sounds'); } catch (e) { /* private window */ } location.reload(); } }),
@@ -381,12 +384,14 @@ function wireButtons() {
 
 $('start-btn').addEventListener('click', async () => {
     engine.prepare(); // (must happen inside the tap, before anything is awaited, or phones keep the sound off)
+    shipped = await shippedDefaults;
+    if (shipped?.settings && firstRun) { const { location: _l, lat: _a, lon: _o, hikers: _h, paused: _p, ...rest } = shipped.settings; Object.assign(settings, rest); }
     $('start-btn').disabled = true; $('start-btn').textContent = 'Starting...';
     try {
         await boot();
         const params = {}; for (const k of CORE_PARAMS) params[k] = settings[k];
         await engine.start(params);
-        loadSavedSounds(engine);
+        loadSavedSounds(engine, shipped?.sounds);
         engine.send('treeDensity', { value: settings.treeDensity / 100 });
         await loadLand(settings.lat, settings.lon, 0.5 * settings.diameterFeet * FEET);
         if (Array.isArray(settings.hikers) && settings.hikers.length && !new URLSearchParams(location.search).has('hikers')) { engine.send('importHikers', { records: settings.hikers }); settings.numHikers = settings.hikers.length; engine.setParam('numHikers', settings.numHikers); }

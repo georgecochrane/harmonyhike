@@ -20,9 +20,15 @@ const ROWS = [
 const skewed = (min, max, skew) => ({ toPos: v => Math.pow((v - min) / (max - min), skew), fromPos: p => min + (max - min) * Math.pow(p, 1 / skew) });
 
 let stored;
-export function loadSavedSounds(engine) {
+let lastReverb = { decay: 2.4, lowpass: 9000, highpass: 120, size: 1 };
+// All the sound presets (as they are now) and the shared reverb: what "Copy my settings" hands over, and what a shipped default-sounds file holds.
+export function currentSounds(engine) { return { presets: engine.presets.map(p => ({ name: p.name, values: [...p.values] })), reverb: { ...(stored?.reverb ?? lastReverb) } }; }
+// `shipped`: the sounds every new visitor starts with (from assets/defaults.json), used when this browser has none of its own saved.
+export function loadSavedSounds(engine, shipped = null) {
     try { stored = JSON.parse(localStorage.getItem('harmonyhike.sounds') || 'null'); } catch (e) { stored = null; }
+    if (!stored && shipped && Array.isArray(shipped.presets)) stored = shipped;
     if (!stored) return;
+    if (stored.reverb) lastReverb = stored.reverb;
     stored.presets.forEach((p, i) => { if (i < engine.presets.length) { engine.send('setPreset', { index: i, values: p.values }); engine.send('renamePreset', { index: i, name: p.name }); engine.presets[i] = p; } else engine.send('addPreset', { values: p.values, name: p.name }); });
     if (stored.reverb) engine.send('reverb', stored.reverb);
 }
@@ -30,7 +36,8 @@ const persist = (engine, reverb) => { try { localStorage.setItem('harmonyhike.so
 
 export function openSoundDesigner(engine) {
     let current = 0;
-    const reverb = stored?.reverb ?? { decay: 2.4, lowpass: 9000, highpass: 120, size: 1 };
+    const reverb = stored?.reverb ?? lastReverb;
+    if (!stored) stored = { presets: [], reverb };
     const root = el('div', { class: 'dialog', onclick: e => { if (e.target === root) close(); } });
     const close = () => { root.remove(); };
     const box = el('div', { class: 'box glass' });
