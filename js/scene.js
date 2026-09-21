@@ -265,7 +265,8 @@ Object.assign(View.prototype, {
         }
 
         if (o.compass) {
-            const c = { x: f.cssW - 34, y: 34 }, origin = f.project(0, 0, 0), north = f.project(0, 0, -0.4);
+            const ins = this.inset || { top: 0, right: 0, bottom: 0, left: 0 };
+            const c = { x: f.cssW - 34 - ins.right, y: 34 + ins.top }, origin = f.project(0, 0, 0), north = f.project(0, 0, -0.4);
             let dx = north.x - origin.x, dy = north.y - origin.y; const len = Math.max(1e-3, Math.hypot(dx, dy)); dx /= len; dy /= len;
             g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(c.x, c.y, 22, 0, TAU); g.fill();
             g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1; g.stroke();
@@ -277,7 +278,8 @@ Object.assign(View.prototype, {
             const present = [false, false, false, false], c = this.coarse, half = (c.res - 1) / 2;
             for (let y = 0; y < c.res - 1; ++y) for (let x = 0; x < c.res - 1; ++x) { if ((x + 0.5 - half) ** 2 + (y + 0.5 - half) ** 2 <= half * half) present[c.classes[y * c.res + x]] = true; }
             const shown = present.map((p, i) => p ? i : -1).filter(i => i >= 0);
-            const w = 96, hgt = 8 + shown.length * 17, x0 = f.cssW - w - 8, y0 = f.cssH - hgt - 8;
+            const ins = this.inset || { top: 0, right: 0, bottom: 0, left: 0 };
+            const w = 96, hgt = 8 + shown.length * 17, x0 = f.cssW - w - 8 - ins.right, y0 = f.cssH - hgt - 8 - ins.bottom - (this.touch ? 26 : 0);
             g.fillStyle = 'rgba(0,0,0,0.42)'; g.beginPath(); g.roundRect(x0, y0, w, hgt, 6); g.fill();
             shown.forEach((i, k) => { g.fillStyle = LAND_COLOURS[i]; g.fillRect(x0 + 8, y0 + 8 + k * 17, 11, 11); g.fillStyle = 'rgba(255,255,255,0.85)'; g.font = '11px system-ui'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(LAND_NAMES[i], x0 + 26, y0 + 13.5 + k * 17); });
         }
@@ -290,12 +292,12 @@ Object.assign(View.prototype, {
                 g.fillStyle = 'rgba(0,0,0,0.42)'; g.beginPath(); g.roundRect(x, y, w, 18, 5); g.fill();
                 g.fillStyle = `rgba(255,255,255,${alpha})`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(text, x + 7, y + 9.5);
             };
-            caption(`Diameter ${diameter}   |   relief ${Math.round(reliefFeet)} ft   |   vertical x${f.exag.toFixed(1)}`, 8, f.cssH - 26, 0.85);
+            caption(`Diameter ${diameter}   |   relief ${Math.round(reliefFeet)} ft   |   vertical x${f.exag.toFixed(1)}`, 8 + (this.inset?.left || 0), f.cssH - 26 - (this.inset?.bottom || 0), 0.85);
             caption(this.touch
-                ? (this.mode === 'rotate' ? 'Drag turns - pinch zooms - two fingers slide the map - tap a hiker'
+                ? (this.mode === 'rotate' ? 'Drag turns - pinch zooms - 2 fingers slide'
                     : 'Tap a hiker to remove it - drag to move it - tap ground to add')
                 : this.mode === 'rotate' ? 'Drag to rotate - scroll or pinch to zoom - Option-drag to pan - click a hiker to hear it - Cmd-click to pick one, Cmd-drag to pick several'
-                : 'Click a hiker to remove it, drag it to move it, click the ground to add one - Cmd-click to pick one, Cmd-drag to pick several', 8, 6, 0.75);
+                : 'Click a hiker to remove it, drag it to move it, click the ground to add one - Cmd-click to pick one, Cmd-drag to pick several', 8 + (this.inset?.left || 0), 6 + (this.inset?.top || 0), 0.75);
         }
     },
 });

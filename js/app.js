@@ -7,7 +7,7 @@ import { TerrainSource, proceduralHeights, geocode, fetchWeather, parseLatLon } 
 import { MidiBridge } from './midi.js';
 import { el, buildPages, sliderRow, selectRow, toggleRow, buttonRow, twoSelectRow, NOTE_NAMES, SCALES, DIVISIONS } from './ui.js';
 import { openSoundDesigner, loadSavedSounds } from './designer.js';
-import { openAbout } from './about.js';
+import { openAbout, openTip } from './about.js';
 import { runSelfTest } from './selftest.js';
 import { initPhone } from './phone.js';
 import { randomPlace } from './places.js';
@@ -335,7 +335,14 @@ function wireButtons() {
     $('zoom-in').onclick = () => view.zoomBy(1.25); $('zoom-out').onclick = () => view.zoomBy(0.8);
     $('pause').onclick = () => { setSetting('paused', settings.paused ? 0 : 1); };
     $('pause').textContent = settings.paused ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', !!settings.paused);
-    $('fullscreen').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
+    $('fullscreen').onclick = async () => {
+        const root = document.documentElement, on = document.fullscreenElement || document.webkitFullscreenElement;
+        const request = root.requestFullscreen || root.webkitRequestFullscreen, exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (on) { exit?.call(document); return; }
+        if (request) { try { await request.call(root, { navigationUI: 'hide' }); try { await screen.orientation?.unlock?.(); } catch (e) { /* not needed */ } return; } catch (e) { /* fall through to the tip */ } }
+        // iPhone browsers have no full-screen mode for web pages: the way to lose the toolbars is to add the page to the Home Screen.
+        openTip('Full screen on this phone', ['Safari on iPhone cannot make a web page full screen. To lose the toolbars:', '1. Tap the Share button (the square with an arrow).', '2. Choose Add to Home Screen.', '3. Open HarmonyHike from that new icon - it runs full screen, with no browser bars.']);
+    };
     $('panel-toggle').onclick = () => $('hiker-panel').classList.toggle('hidden');
     $('clear-hikers').onclick = () => { engine.send('clearHikers'); settings.numHikers = 0; pages?.refresh(); selected = []; view.selected = new Set(); renderHikerPanel(); };
     $('about-btn').onclick = () => openAbout();

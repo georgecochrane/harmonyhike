@@ -22,3 +22,11 @@ export function openAbout() {
     const root = el('div', { class: 'dialog', onclick: e => { if (e.target === root) root.remove(); } }, box);
     document.getElementById('dialog-root').append(root);
 }
+
+// A small message box with a few lines of text.
+export function openTip(title, lines) {
+    const box = el('div', { class: 'box glass', style: 'max-width:420px' }, el('h2', { text: title }), ...lines.map(t => el('p', { text: t })),
+        el('p', {}, el('button', { text: 'OK', onclick: () => root.remove() })));
+    const root = el('div', { class: 'dialog', onclick: e => { if (e.target === root) root.remove(); } }, box);
+    document.getElementById('dialog-root').append(root);
+}

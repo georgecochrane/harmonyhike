@@ -1,0 +1,12 @@
+{
+  "name": "HarmonyHike",
+  "short_name": "HarmonyHike",
+  "description": "Set hikers loose in your favorite places.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#0d1424",
+  "theme_color": "#0d1424",
+  "icons": [{ "src": "assets/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }]
+}
