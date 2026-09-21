@@ -72,7 +72,7 @@ export class View {
             if (Math.hypot(off.x, off.y) < 2) this.commitPending = false;
         }
         const away = metresBetween(surface.lat, surface.lon, this.windowLat, this.windowLon);
-        if (!this.dragging?.pan && !this.commitPending && Math.hypot(away.x, away.y) > 0.6 * this.displayedRadius) { this.windowLat = surface.lat; this.windowLon = surface.lon; }
+        if (!this.follow && !this.dragging?.pan && !this.commitPending && Math.hypot(away.x, away.y) > 0.6 * this.displayedRadius) { this.windowLat = surface.lat; this.windowLon = surface.lon; }
         this.waterKey = '';
     }
     setWorld(surface) {
@@ -219,6 +219,7 @@ export class View {
             if (g) {
                 const centre = { lat: this.windowLat, lon: this.windowLon };
                 const grab = offsetLatLon(centre.lat, centre.lon, g.x * f.windowRadius, g.y * f.windowRadius);
+                this.stopFollow?.();
                 this.dragging = { ...base, pan: true, grabLat: grab.lat, grabLon: grab.lon };
             }
             return;
@@ -251,7 +252,7 @@ export class View {
             this.zoom = clamp(d.zoom * this.pinchDistance() / d.dist, 0.5, 3);
             let turn = this.pinchAngle() - d.angle; turn = Math.atan2(Math.sin(turn), Math.cos(turn));
             if (Math.abs(turn) > 0.05 || d.turning) { d.turning = true; this.yaw = d.yaw - turn; }   // ignore tiny twists so a plain pinch stays steady
-            if (f && d.grabLat !== undefined) {
+            if (f && d.grabLat !== undefined && !this.follow) {
                 const g = this.pickPlane(f, this.pinchCentre());
                 if (g) { d.moved = true; this.limitWindow(offsetLatLon(d.grabLat, d.grabLon, -g.x * f.windowRadius, -g.y * f.windowRadius)); }
             }

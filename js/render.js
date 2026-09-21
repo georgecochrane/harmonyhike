@@ -594,7 +594,7 @@ export class Renderer {
             gl.uniform1f(k.u.uBaseY, w.baseY);
             gl.uniform3fv(k.u.uLight, f.light);
             gl.bindVertexArray(this.skirtVao);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, (this.skirtSegments + 1) * 2);
+            if (!f.followMode) gl.drawArrays(gl.TRIANGLE_STRIP, 0, (this.skirtSegments + 1) * 2);   // (no rock wall when riding along: it would fill the view)
             gl.enable(gl.CULL_FACE);
         }
 

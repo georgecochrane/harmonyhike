@@ -76,7 +76,8 @@ export function initPhone(view, { onView } = {}) {
             el('button', { 'data-view': 'view', text: 'View', onclick: () => setView(sheetView === 'view' ? null : 'view') }),
             el('button', { 'data-view': 'hiker', text: 'Hiker', onclick: () => setView(sheetView === 'hiker' ? null : 'hiker') }));
         const select = el('button', { id: 'select-btn', text: 'Select', onclick: () => { view.selectMode = !view.selectMode; select.classList.toggle('on', view.selectMode); } });
-        $('map').append(select);
+        const follow = el('button', { id: 'follow-map', class: 'follow-btn', text: 'Follow', onclick: () => window.toggleFollowCamera?.() });
+        $('map').append(select, follow);
         const grip = sheet.firstChild;
         // Move the desktop pieces into the sheet and dock; they are moved back if the window grows.
         const move = (node, to) => { homes.push({ node, parent: node.parentNode, next: node.nextSibling }); to.append(node); };
@@ -101,7 +102,7 @@ export function initPhone(view, { onView } = {}) {
         if (!built) return; built = false;
         for (const h of homes.reverse()) h.parent.insertBefore(h.node, h.next);
         homes = [];
-        $('sheet')?.remove(); $('dock')?.remove(); $('select-btn')?.remove();
+        $('sheet')?.remove(); $('dock')?.remove(); $('select-btn')?.remove(); $('follow-map')?.remove();
         document.body.classList.remove('dock-open');
         setView(null);
     }

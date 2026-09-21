@@ -1,6 +1,6 @@
 // Turning the state of the world into a picture: assembles what the renderer draws each frame, and the 2D overlay on top (hiker numbers,
 // selection rings, compass, legend, captions).
-import { View, K, clamp, speedFeel, TAU, HALF_PI, sunPosition, daylightFactor } from './view.js';
+import { View, K, clamp, speedFeel, TAU, HALF_PI, sunPosition, daylightFactor, offsetLatLon } from './view.js';
 
 const SKIES = ['belfast_sunset', 'farm_field', 'kloofendal_48d_partly_cloudy', 'kloofendal_overcast', 'kloppenheim_05', 'qwantani_dusk_2', 'sunflowers', 'wasteland_clouds'];
 const LAND_NAMES = ['Nature', 'Farmland', 'Town', 'Water'];
@@ -21,10 +21,41 @@ Object.assign(View.prototype, {
         if (Math.abs(Math.log(wanted / this.displayedRadius)) < 0.0005) this.displayedRadius = wanted;
     },
 
+    // Follow camera: the window rides along with one hiker, close and low, in among the trees. `follow` = { channel, radius, settle, saved }.
+    startFollow(channel) {
+        if (!this.coarse || this.follow) return false;
+        this.follow = { channel, radius: 120, settle: 1.4, saved: { pitch: this.pitch, zoom: this.zoom } };
+        return true;
+    },
+    stopFollow() {
+        const fw = this.follow; if (!fw) return;
+        this.follow = null;
+        this.restore = { settle: 1.2, pitch: fw.saved.pitch, zoom: fw.saved.zoom };
+        this.wantedRadius = this.followRestoreRadius?.() ?? this.wantedRadius;
+        if (this.coarse) { this.windowLat = this.coarse.lat; this.windowLon = this.coarse.lon; }
+        this.emit('followEnded');
+    },
+    updateFollow(dt) {
+        const k = 1 - Math.exp(-3 * dt);
+        if (this.restore) {   // easing the camera back to where it was
+            this.pitch += (this.restore.pitch - this.pitch) * k; this.zoom += (this.restore.zoom - this.zoom) * k;
+            if ((this.restore.settle -= dt) <= 0) this.restore = null;
+        }
+        const fw = this.follow; if (!fw) return;
+        const h = this.snapshot?.hikers.find(x => x.channel === fw.channel);
+        if (!h) { this.stopFollow(); return; }
+        const c = this.coarse, half = (c.res - 1) / 2, g = this.glidePosition(h);
+        const target = offsetLatLon(c.lat, c.lon, (g.x - half) * c.spacing, (g.y - half) * c.spacing);
+        this.windowLat += (target.lat - this.windowLat) * k; this.windowLon += (target.lon - this.windowLon) * k;
+        this.wantedRadius = fw.radius;
+        if (fw.settle > 0) { fw.settle -= dt; this.pitch += (0.34 - this.pitch) * k; this.zoom += (2.2 - this.zoom) * k; }   // then it is yours to tilt and turn
+    },
+
     draw(now) {
         if (!this.coarse) return;
         const r = this.renderer, dt = this.lastFrameMs ? clamp((now - this.lastFrameMs) / 1000, 0, 0.1) : 0;
         this.lastFrameMs = now;
+        this.updateFollow(dt);
         // Turn slowly by itself when asked to (a little while after the map was last touched), so viewers can find their hiker.
         if ((this.options.autoRotate || 0) > 0 && now - (this.lastInteraction ?? -1e9) > 2500 && !this.dragging) this.yaw = (this.yaw + this.options.autoRotate * TAU / 60 * dt) % TAU;
         const dpr = r.resize();
@@ -78,6 +109,7 @@ Object.assign(View.prototype, {
         f.tint = daylight < 1 ? [8 / 255, 14 / 255, 40 / 255, 0.62 * (1 - daylight)] : null;
         f.camRight = new Float32Array(f.right); f.camUp = new Float32Array(f.up);
 
+        f.followMode = !!this.follow;
         f.trees = this.options.trees === false ? null : this.buildTrees(f, now);
         const items = this.buildFigures(f, dt, now);
         f.hikers = items.hikers; f.animals = items.animals; f.glows = items.glows;

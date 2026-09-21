@@ -303,6 +303,8 @@ async function boot() {
     view.options.trees = settings.showTrees !== 0;
     view.on('window', maybeLoadWorld);
     view.on('selection', list => { selected = list; renderHikerPanel(); });
+    view.followRestoreRadius = () => 0.5 * settings.diameterFeet * FEET;
+    view.on('followEnded', () => document.querySelectorAll('.follow-btn').forEach(b => { b.textContent = 'Follow'; b.classList.remove('on'); }));
     view.on('addHiker', async s => { await engine.ask('addHiker', { x: s.x, y: s.y }); syncHikerCount(); });
     view.on('removeHiker', async ch => { await engine.ask('removeHiker', { channel: ch }); syncHikerCount(); });
     view.on('moveHiker', (ch, x, y) => engine.send('moveHiker', { channel: ch, x, y }));
@@ -350,6 +352,15 @@ function wireButtons() {
     $('mode-rotate').onclick = () => { view.mode = 'rotate'; $('mode-rotate').classList.add('on'); $('mode-manage').classList.remove('on'); };
     $('mode-manage').onclick = () => { view.mode = 'manage'; $('mode-manage').classList.add('on'); $('mode-rotate').classList.remove('on'); };
     $('reset-view').onclick = () => view.resetView();
+    // Follow: ride along with the picked hiker (or the first one), close and low; press again to go back.
+    const followButtons = () => [...document.querySelectorAll('.follow-btn')];
+    const toggleFollow = () => {
+        if (view.follow) { view.stopFollow(); return; }
+        const channel = selected[0] ?? view.snapshot?.hikers[0]?.channel;
+        if (channel && view.startFollow(channel)) followButtons().forEach(b => { b.textContent = 'Stop following'; b.classList.add('on'); });
+    };
+    $('follow').classList.add('follow-btn'); $('follow').onclick = toggleFollow;
+    window.toggleFollowCamera = toggleFollow;
     $('zoom-in').onclick = () => view.zoomBy(1.25); $('zoom-out').onclick = () => view.zoomBy(0.8);
     $('pause').onclick = () => { setSetting('paused', settings.paused ? 0 : 1); };
     $('pause').textContent = settings.paused ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', !!settings.paused);
