@@ -22,6 +22,7 @@ export function applyCommand(core, m, post) {
         case 'presets': reply(presetList(c)); break;
         case 'setPreset': c.setPreset(m.index, m.values); break;
         case 'addPreset': reply(c.addPreset(m.values, m.name)); post({ type: 'presets', presets: presetList(c) }); break;
+        case 'removePreset': reply(c.removePreset(m.index)); post({ type: 'presets', presets: presetList(c) }); break;
         case 'renamePreset': c.renamePreset(m.index, m.name); break;
         case 'reverb': x.ts_set_reverb(m.decay, m.lowpass, m.highpass, m.size); break;
         case 'audition': x.ts_audition(m.preset, m.note, m.seconds); break;

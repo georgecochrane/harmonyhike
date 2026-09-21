@@ -122,6 +122,7 @@ async function createCore (wasmBytes, sampleRate) {
         getPreset (index) { x.ts_get_preset (index, scratch.preset); return Array.from (f32 (scratch.preset, presetFloats)); },
         setPreset (index, values) { f32 (scratch.preset, presetFloats).set (values); x.ts_set_preset (index, scratch.preset); },
         addPreset (values, name) { f32 (scratch.preset, presetFloats).set (values); const i = x.ts_add_preset (scratch.preset); if (i >= 0 && name) { const p = writeCString (name); x.ts_set_preset_name (i, p); x.ts_free (p); } return i; },
+        removePreset (index) { return x.ts_remove_preset (index); },
         renamePreset (index, name) { const p = writeCString (name); x.ts_set_preset_name (index, p); x.ts_free (p); },
         presetFloats,
 
@@ -165,6 +166,7 @@ function applyCommand(core, m, post) {
         case 'presets': reply(presetList(c)); break;
         case 'setPreset': c.setPreset(m.index, m.values); break;
         case 'addPreset': reply(c.addPreset(m.values, m.name)); post({ type: 'presets', presets: presetList(c) }); break;
+        case 'removePreset': reply(c.removePreset(m.index)); post({ type: 'presets', presets: presetList(c) }); break;
         case 'renamePreset': c.renamePreset(m.index, m.name); break;
         case 'reverb': x.ts_set_reverb(m.decay, m.lowpass, m.highpass, m.size); break;
         case 'audition': x.ts_audition(m.preset, m.note, m.seconds); break;
