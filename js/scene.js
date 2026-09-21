@@ -25,6 +25,8 @@ Object.assign(View.prototype, {
         if (!this.coarse) return;
         const r = this.renderer, dt = this.lastFrameMs ? clamp((now - this.lastFrameMs) / 1000, 0, 0.1) : 0;
         this.lastFrameMs = now;
+        // Turn slowly by itself when asked to (a little while after the map was last touched), so viewers can find their hiker.
+        if ((this.options.autoRotate || 0) > 0 && now - (this.lastInteraction ?? -1e9) > 2500 && !this.dragging) this.yaw = (this.yaw + this.options.autoRotate * TAU / 60 * dt) % TAU;
         const dpr = r.resize();
         const cssW = this.canvas.clientWidth, cssH = this.canvas.clientHeight;
         if (this.overlay.width !== r.canvas.width || this.overlay.height !== r.canvas.height) { this.overlay.width = r.canvas.width; this.overlay.height = r.canvas.height; }

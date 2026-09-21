@@ -186,7 +186,7 @@ export class View {
         el.addEventListener('pointermove', e => this.pointerMove(e));
         el.addEventListener('pointerup', e => this.pointerUp(e));
         el.addEventListener('pointerleave', () => { this.hover = null; });
-        el.addEventListener('wheel', e => { e.preventDefault(); this.zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))); }, { passive: false });
+        el.addEventListener('wheel', e => { this.lastInteraction = performance.now(); e.preventDefault(); this.zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))); }, { passive: false });
         el.addEventListener('dblclick', () => this.resetView());
         el.addEventListener('contextmenu', e => e.preventDefault());
         this.pointers = new Map();
@@ -197,6 +197,7 @@ export class View {
     local(e) { const r = this.overlay.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 
     pointerDown(e) {
+        this.lastInteraction = performance.now();
         this.overlay.setPointerCapture(e.pointerId);
         const p = this.local(e);
         this.pointers.set(e.pointerId, p);
@@ -241,6 +242,7 @@ export class View {
     pinchCentre() { const [a, b] = [...this.pointers.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
 
     pointerMove(e) {
+        if (this.pointers.size) this.lastInteraction = performance.now();
         const p = this.local(e);
         if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, p);
         const f = this.lastFrame;

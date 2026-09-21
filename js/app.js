@@ -23,7 +23,7 @@ const DEFAULTS = {
     arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60,
     // (web only)
     diameterFeet: 5280, terrainDetail: 2, realLight: 0, cloudOpacity: 50,
-    showTrees: 1, treeDensity: 60, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
+    showTrees: 1, treeDensity: 60, autoRotate: 0, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
     location: 'Yosemite Valley', lat: 37.7456, lon: -119.5936,
 };
 const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'noteLength', 'noteLengthRandom',
@@ -174,6 +174,7 @@ function buildControls() {
             { title: 'Sky', rows: () => [
                 toggleRow('', 'Light by time of day', S('realLight'), P('realLight')),
                 toggleRow('', 'Trees', S('showTrees'), v => { setSetting('showTrees', v); view.options.trees = !!v; }),
+                sliderRow('Auto-rotate', { min: 0, max: 3, step: 0.1, format: v => v < 0.05 ? 'Off' : v.toFixed(1) + ' /min' }, S('autoRotate'), v => { setSetting('autoRotate', v); view.options.autoRotate = v; }),
                 sliderRow('Tree density', { min: 0, max: 100, step: 1, format: v => v < 0.5 ? 'None' : Math.round(v) + '%' }, S('treeDensity'), v => { setSetting('treeDensity', v); view.treeDensity = v / 100; engine.send('treeDensity', { value: v / 100 }); }),
                 R('Clouds', { min: 0, max: 100, format: offOr('%') }, 'cloudOpacity')()] },
             { title: 'On the map', rows: () => [
@@ -294,6 +295,7 @@ async function boot() {
     initPhone(view);
     view.treeGen = (surface, area) => engine.generateTrees(surface, area);
     view.treeDensity = settings.treeDensity / 100;
+    view.options.autoRotate = settings.autoRotate || 0;
     view.options.trees = settings.showTrees !== 0;
     view.on('window', maybeLoadWorld);
     view.on('selection', list => { selected = list; renderHikerPanel(); });
