@@ -8,6 +8,7 @@ const LAND_COLOURS = ['#5a6e3a', '#b2c45c', '#c4ac94', '#367ac4'];
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
 import { leafState } from './season.js';
+import { birdTriangles } from './birdshape.js';
 Object.assign(View.prototype, {
     skyNames: SKIES,
 
@@ -78,6 +79,7 @@ Object.assign(View.prototype, {
         f.tint = daylight < 1 ? [8 / 255, 14 / 255, 40 / 255, 0.62 * (1 - daylight)] : null;
         f.camRight = new Float32Array(f.right); f.camUp = new Float32Array(f.up);
 
+        f.birds = this.buildBirds(f);
         f.trees = this.options.trees === false ? null : this.buildTrees(f, now);
         const items = this.buildFigures(f, dt, now);
         f.hikers = items.hikers; f.animals = items.animals; f.glows = items.glows;
@@ -131,6 +133,26 @@ Object.assign(View.prototype, {
         return { conifer: conifer.subarray(0, nc * 9), nConifer: nc, broad: broad.subarray(0, nb * 9), nBroad: nb, sway, windX: Math.sin(toward), windZ: -Math.cos(toward), time: now / 1000 };
     },
 
+    // Birds on the wing, high in the sky: each is a small body with two wings that flap (harder just after a call). Returned as flat-lit triangles: x y z r g b per vertex.
+    buildBirds(f) {
+        const list = this.snapshot?.birds; if (!list || !list.length) return null;
+        const skyY = f.sceneHeight(f.maxH), out = [];
+        for (const b of list) {
+            const w = f.gridToWindow(b.x, b.y);
+            if (w.x * w.x + w.y * w.y > 1.02) continue;
+            const S = 0.34 * f.hikerHeight * (1 + 0.2 * b.excitement), cy = skyY + b.altitude + 0.004 * Math.sin(b.phase);
+            const flap = 0.9 * Math.sin(b.phase) * (1 + 0.3 * b.excitement), ch = Math.cos(b.heading), sh = Math.sin(b.heading);
+            for (const tri of birdTriangles(flap)) {
+                const v = tri.p.map(([lx, ly, lz]) => [w.x + S * (lx * ch - lz * sh), cy + S * ly, w.y + S * (lx * sh + lz * ch)]);
+                const e1 = [v[1][0] - v[0][0], v[1][1] - v[0][1], v[1][2] - v[0][2]], e2 = [v[2][0] - v[0][0], v[2][1] - v[0][1], v[2][2] - v[0][2]];
+                let n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+                const len = Math.hypot(...n) || 1, lit = Math.abs((n[0] * f.light[0] + n[1] * f.light[1] + n[2] * f.light[2]) / len), k = 0.5 + 0.65 * lit;
+                for (const p of v) out.push(p[0], p[1], p[2], Math.min(1, tri.c[0] * k), Math.min(1, tri.c[1] * k), Math.min(1, tri.c[2] * k));
+            }
+        }
+        return out.length ? new Float32Array(out) : null;
+    },
+
     buildFigures(f, dt, now) {
         const s = this.snapshot, hikers = [], animals = [], glows = [], labels = [], model = this.renderer.models;
         if (!s || !model) return { hikers, animals, glows, labels };
@@ -171,15 +193,6 @@ Object.assign(View.prototype, {
             if (w.x * w.x + w.y * w.y > 1.02) return;
             animals.push({ type: a.type, x: w.x, z: w.y, y: f.surfaceY(w.x, w.y), yaw: HALF_PI - a.heading, scale: size(a.type), legSwing: moving ? 0.7 * Math.sin(this.animalStride[i]) : 0 });
         });
-
-        // Birds on the wing: they flap (a quick bob), flap harder just after calling out, and cast no shadow on purpose (they are high up).
-        const skyY = f.sceneHeight(f.maxH);   // birds fly in the sky: above the highest ground, not following the hills
-        for (const b of s.birds || []) {
-            const w = f.gridToWindow(b.x, b.y);
-            if (w.x * w.x + w.y * w.y > 1.02) continue;
-            const flap = Math.sin(b.phase);
-            animals.push({ type: 9, x: w.x, z: w.y, y: skyY + b.altitude + 0.006 * flap, yaw: HALF_PI - b.heading, scale: size(9) * (0.6 + 0.14 * b.excitement), legSwing: 0.9 * flap, tilt: (0.18 + 0.22 * b.excitement) * flap });
-        }
 
         // Fish that leap from the water now and then
         this.updateWaterCells();

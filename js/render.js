@@ -165,6 +165,17 @@ function treeShape(kind) {
     return new Float32Array(data);
 }
 
+// Birds: plain lit triangles, drawn from both sides (wings are thin).
+const BIRD_VS = HEADER + `
+uniform mat4 uViewProj;
+in vec3 aPos, aColour;
+flat out vec3 vColour;
+void main() { vColour = aColour; gl_Position = uViewProj * vec4(aPos, 1.0); }`;
+const BIRD_FS = HEADER + `
+flat in vec3 vColour;
+out vec4 o;
+void main() { o = vec4(vColour, 1.0); }`;
+
 // The rock wall round the edge and the disc under the land.
 const SKIRT_VS = HEADER + `
 uniform mat4 uViewProj;
@@ -352,7 +363,7 @@ export class Renderer {
         this.canvas = canvas;
         this.programs = {
             terrain: program(gl, TERRAIN_VS, TERRAIN_FS), skirt: program(gl, SKIRT_VS, SKIRT_FS), figure: program(gl, FIGURE_VS, FIGURE_FS),
-            glow: program(gl, GLOW_VS, GLOW_FS), tree: program(gl, TREE_VS, TREE_FS), cloud: program(gl, CLOUD_VS, CLOUD_FS), sky: program(gl, SKY_VS, SKY_FS), tint: program(gl, SKY_VS, TINT_FS),
+            glow: program(gl, GLOW_VS, GLOW_FS), tree: program(gl, TREE_VS, TREE_FS), bird: program(gl, BIRD_VS, BIRD_FS), cloud: program(gl, CLOUD_VS, CLOUD_FS), sky: program(gl, SKY_VS, SKY_FS), tint: program(gl, SKY_VS, TINT_FS),
         };
         this.models = null;
         this.skies = new Map();
@@ -360,6 +371,13 @@ export class Renderer {
         this.surface = { heights: null, classes: null, res: 0, key: null };
         this.buildMeshes();
         this.trees = [1, 0].map(kind => this.makeTreeMesh(kind));
+        {   // birds: a buffer refilled every frame
+            const p = this.programs.bird, vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+            const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            for (const [name, offset] of [['aPos', 0], ['aColour', 3]]) { const l = gl.getAttribLocation(p.p, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 3, gl.FLOAT, false, 24, offset * 4); }
+            gl.bindVertexArray(null);
+            this.birdMesh = { vao, buf };
+        }
         this.emptyVao = gl.createVertexArray();
     }
 
@@ -374,6 +392,17 @@ export class Renderer {
         ia('iBase', 3, 0); ia('iSize', 2, 3); ia('iColour', 3, 5); ia('iPhase', 1, 8);
         gl.bindVertexArray(null);
         return { vao, inst, count: data.length / 8 };
+    }
+
+    drawBirds(f) {
+        if (!f.birds) return;
+        const gl = this.gl, p = this.programs.bird;
+        gl.useProgram(p.p); gl.uniformMatrix4fv(p.u.uViewProj, false, f.viewProj);
+        gl.disable(gl.CULL_FACE);
+        gl.bindVertexArray(this.birdMesh.vao); gl.bindBuffer(gl.ARRAY_BUFFER, this.birdMesh.buf);
+        gl.bufferData(gl.ARRAY_BUFFER, f.birds, gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, f.birds.length / 6);
+        gl.bindVertexArray(null);
     }
 
     drawTrees(f) {
@@ -600,6 +629,7 @@ export class Renderer {
 
         // Trees
         this.drawTrees(f);
+        this.drawBirds(f);
 
         // Figures
         if (this.models) {
