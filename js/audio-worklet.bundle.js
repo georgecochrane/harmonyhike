@@ -79,19 +79,21 @@ async function createCore (wasmBytes, sampleRate) {
 
         // The state to draw: { tick, radius, resolution, spacing, paused, hikers: [...], animals: [...] }.
         snapshot () {
-            let need = 10 + 16 * 11 + 40 * 6;
+            let need = 10 + 16 * 11 + 40 * 6 + 10 * 6;
             for (;;) {
                 if (scratch.snapshotCapacity < need) { if (scratch.snapshot) x.ts_free (scratch.snapshot); scratch.snapshot = x.ts_alloc (need * 4); scratch.snapshotCapacity = need; }
                 const got = x.ts_snapshot (scratch.snapshot, scratch.snapshotCapacity);
                 if (got < 0) { need = -got; continue; }
                 const a = f32 (scratch.snapshot, got);
-                const hikers = [], animals = [];
+                const hikers = [], animals = [], birds = [];
                 let at = 10;
                 for (let i = 0; i < a[1]; ++i, at += 11)
                     hikers.push ({ channel: a[at], x: a[at + 1], y: a[at + 2], heading: a[at + 3], speed: a[at + 4], noteAge: a[at + 5], noteSeconds: a[at + 6], tiredness: a[at + 7], midiChannel: a[at + 8], soundPreset: a[at + 9] });
                 for (let i = 0; i < a[2]; ++i, at += 6)
                     animals.push ({ type: a[at], x: a[at + 1], y: a[at + 2], heading: a[at + 3], speed: a[at + 4], encounterRadius: a[at + 5] });
-                return { tick: a[0], radius: a[3], resolution: a[4], spacing: a[5], paused: a[6] > 0.5, arpOn: a[7] > 0.5, syncBpm: a[8], hikers, animals };
+                for (let i = 0; i < a[9]; ++i, at += 6)
+                    birds.push ({ x: a[at], y: a[at + 1], heading: a[at + 2], phase: a[at + 3], excitement: a[at + 4], altitude: a[at + 5] });
+                return { tick: a[0], radius: a[3], resolution: a[4], spacing: a[5], paused: a[6] > 0.5, arpOn: a[7] > 0.5, syncBpm: a[8], hikers, animals, birds };
             }
         },
 

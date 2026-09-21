@@ -99,3 +99,5 @@ body.phone .dialog .box{max-width:96vw;max-height:calc(var(--vv-h,100dvh) - 24px
 body.phone #start{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 body.phone #start .card{padding:22px 20px;max-width:min(440px,92vw);max-height:calc(var(--vv-h,100dvh) - 24px);overflow:auto}
 body.standalone #fullscreen{display:none}
+.midihelp{max-width:min(620px,96vw)}.midihelp h3{margin:14px 0 4px;font-size:13px}.midihelp ol{margin:4px 0 8px;padding-left:22px}.midihelp li{margin:3px 0}
+.help-ok{color:#9be3a8}.help-warn{color:#ffd28a}

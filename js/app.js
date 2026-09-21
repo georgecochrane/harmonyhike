@@ -8,6 +8,7 @@ import { MidiBridge } from './midi.js';
 import { el, buildPages, sliderRow, selectRow, toggleRow, buttonRow, twoSelectRow, NOTE_NAMES, SCALES, DIVISIONS } from './ui.js';
 import { openSoundDesigner, loadSavedSounds } from './designer.js';
 import { openAbout, openTip } from './about.js';
+import { openMidiHelp } from './midihelp.js';
 import { runSelfTest } from './selftest.js';
 import { initPhone } from './phone.js';
 import { randomPlace } from './places.js';
@@ -186,6 +187,7 @@ function buildControls() {
                 const rows = [selectRow('Output', ['MIDI', 'Internal sound', 'MIDI + internal'], S('outputMode'), v => { setSetting('outputMode', v); pages.show(3); }),
                     R('Volume', { min: 0, max: 100, format: offOr('%') }, 'soundVolume')(), buttonRow('', 'Sound Designer...', () => openSoundDesigner(engine))];
                 if (settings.outputMode !== 1) rows.push(midiOutputRow());
+                rows.push(buttonRow('', 'How to set up MIDI...', () => openMidiHelp(midi)));
                 return rows;
             } },
             { title: 'Nature', rows: () => [R('Animals', { min: 0, max: 100, format: offOr('%') }, 'animalLevel')(), R('Water', { min: 0, max: 100, format: offOr('%') }, 'waterLevel')()] }] },

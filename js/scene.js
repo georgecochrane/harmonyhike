@@ -122,6 +122,14 @@ Object.assign(View.prototype, {
             animals.push({ type: a.type, x: w.x, z: w.y, y: f.surfaceY(w.x, w.y), yaw: HALF_PI - a.heading, scale: size(a.type), legSwing: moving ? 0.7 * Math.sin(this.animalStride[i]) : 0 });
         });
 
+        // Birds on the wing: they flap (a quick bob), flap harder just after calling out, and cast no shadow on purpose (they are high up).
+        for (const b of s.birds || []) {
+            const w = f.gridToWindow(b.x, b.y);
+            if (w.x * w.x + w.y * w.y > 1.02) continue;
+            const flap = Math.sin(b.phase);
+            animals.push({ type: 9, x: w.x, z: w.y, y: f.surfaceY(w.x, w.y) + b.altitude + 0.006 * flap, yaw: HALF_PI - b.heading, scale: size(9) * (1.5 + 0.35 * b.excitement), legSwing: 0.9 * flap, tilt: (0.18 + 0.22 * b.excitement) * flap });
+        }
+
         // Fish that leap from the water now and then
         this.updateWaterCells();
         if (this.waterCells.length && nowMs / 1000 >= this.nextFish && this.fish.length < 3) {
