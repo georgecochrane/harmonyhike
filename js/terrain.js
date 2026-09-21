@@ -9,7 +9,8 @@ export const LAND = { nature: 0, farmland: 1, town: 2, water: 3 };
 // Colours from OpenStreetMap's standard style, as [r, g, b, class].
 const PALETTE = [
     [170, 211, 223, 3],
-    [224, 223, 223, 2], [242, 218, 217, 2], [255, 214, 209, 2], [235, 219, 232, 2], [217, 208, 201, 2], [238, 238, 238, 2], [255, 255, 255, 2], [240, 240, 216, 2],
+    // (white and near-white are left out on purpose: that is the colour of the halos round every map label, and of road casings, which show up as writing on the ground)
+    [224, 223, 223, 2], [242, 218, 217, 2], [255, 214, 209, 2], [235, 219, 232, 2], [217, 208, 201, 2], [240, 240, 216, 2],
     [238, 240, 213, 1], [205, 235, 176, 1], [201, 225, 191, 1], [174, 223, 163, 1],
     [173, 209, 158, 0], [200, 215, 171, 0], [214, 217, 159, 0], [200, 250, 204, 0], [170, 203, 175, 0], [170, 224, 203, 0],
     [238, 229, 220, 0], [245, 233, 198, 0], [255, 241, 186, 0], [221, 236, 236, 0], [242, 239, 233, 0],
@@ -111,6 +112,26 @@ export function flattenWater(heights, classes, n) {
         out[i] = level;
     }
     return out;
+}
+
+// Removes isolated specks of land class (what is left of map labels): a vertex of nature, farmland or town that is on its own (two or fewer of its eight
+// neighbours share its class) takes the most common class around it. Water is left alone. Same rule as despeckleLandCover in the desktop app.
+export function despeckleLandCover(classes, res) {
+    if (res < 3) return classes;
+    for (let pass = 0; pass < 2; ++pass) {
+        const source = Uint8Array.from(classes);
+        for (let y = 1; y < res - 1; ++y) for (let x = 1; x < res - 1; ++x) {
+            const own = source[y * res + x];
+            if (own === 3) continue;
+            const counts = [0, 0, 0, 0];
+            for (let dy = -1; dy <= 1; ++dy) for (let dx = -1; dx <= 1; ++dx) if (dx || dy) ++counts[source[(y + dy) * res + x + dx] & 3];
+            if (counts[own & 3] > 2) continue;
+            let best = own;
+            for (let c = 0; c < 4; ++c) if (c !== 3 && counts[c] > counts[best]) best = c;
+            classes[y * res + x] = best;
+        }
+    }
+    return classes;
 }
 
 export class TerrainSource {
@@ -220,7 +241,7 @@ export class TerrainSource {
             else if (share(1) >= 0.25 && votes[1] >= votes[0]) chosen = 1;
             classes[gy * res + gx] = chosen;
         }
-        return classes;
+        return despeckleLandCover(classes, res);
     }
 }
 
