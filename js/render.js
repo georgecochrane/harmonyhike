@@ -29,6 +29,7 @@ const TERRAIN_VS = HEADER + `
 uniform mat4 uViewProj;
 uniform sampler2D uHeights;
 uniform usampler2D uClasses;
+uniform float uTime;
 uniform int uRes;
 uniform int uHasClasses;
 uniform vec2 uCentreG;
@@ -67,9 +68,29 @@ void main() {
     float diffuse = max(0.0, (-dhdx * uLight.x + uLight.y - dhdz * uLight.z) / nLen);
     float elev = (hAt(gc) - uMinH) / uRange;
     uint cls = 0u;
-    if (uHasClasses == 1) cls = texelFetch(uClasses, ivec2(clamp(round(gc), vec2(0.0), vec2(float(uRes - 1)))), 0).r;
+    bool flatWater = false;
+    if (uHasClasses == 1) {
+        // Blue only where the water really is flat: all four surrounding vertices are water. Anywhere else the land colour shows (shores, islands, rocks).
+        ivec2 g0 = ivec2(clamp(floor(gc), vec2(0.0), vec2(float(uRes - 2))));
+        uint c00 = texelFetch(uClasses, g0, 0).r, c10 = texelFetch(uClasses, g0 + ivec2(1, 0), 0).r, c01 = texelFetch(uClasses, g0 + ivec2(0, 1), 0).r, c11 = texelFetch(uClasses, g0 + ivec2(1, 1), 0).r;
+        if (c00 == 3u && c10 == 3u && c01 == 3u && c11 == 3u) { cls = 3u; flatWater = true; }
+        else {
+            uint near = texelFetch(uClasses, ivec2(clamp(round(gc), vec2(0.0), vec2(float(uRes - 1)))), 0).r;
+            cls = near != 3u ? near : (c00 != 3u ? c00 : c10 != 3u ? c10 : c01 != 3u ? c01 : c11);
+        }
+    }
     vec3 base = cls == 3u ? vec3(54., 122., 196.) / 255. : cls == 2u ? vec3(196., 172., 148.) / 255. : cls == 1u ? vec3(178., 196., 92.) / 255. : elevationColour(elev);
-    vColour = min(vec3(1.0), base * clamp(0.4 + 0.75 * diffuse, 0.0, 1.4));
+    float shade = clamp(0.4 + 0.75 * diffuse, 0.0, 1.4);
+    if (flatWater) {
+        // Water shimmers: slow ripples of light and dark drifting across it, and now and then a cell flashes bright like sun on a wave.
+        vec2 cellId = floor(gc);
+        float ripple = 0.5 + 0.25 * sin(dot(cellId, vec2(0.55, 0.32)) + uTime * 0.9) + 0.25 * sin(dot(cellId, vec2(-0.31, 0.63)) - uTime * 1.3);
+        float phase = fract(sin(dot(cellId, vec2(12.9898, 78.233))) * 43758.5453);
+        float glint = pow(max(0.0, sin(uTime * (1.4 + 1.6 * phase) + phase * 40.0)), 24.0) * step(0.85, fract(phase * 7.31));
+        base = mix(base * vec3(0.86, 0.93, 1.0), base * vec3(1.12, 1.12, 1.1), ripple) + vec3(0.9, 0.95, 1.0) * glint * 0.6;
+        shade = 0.95 + 0.15 * shade;   // water is lit evenly: it is flat
+    }
+    vColour = min(vec3(1.0), base * shade);
 
     float h = hAt(uCentreG + winV * uGridPerUnit);
     float y = (h - uMid) / uRadius * uExag;
@@ -459,6 +480,7 @@ export class Renderer {
             gl.uniformMatrix4fv(t.u.uViewProj, false, f.viewProj);
             gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.heightTexture); gl.uniform1i(t.u.uHeights, 1);
             gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.classTexture); gl.uniform1i(t.u.uClasses, 2);
+            gl.uniform1f(t.u.uTime, (performance.now() % 100000) / 1000);
             gl.uniform1i(t.u.uRes, this.surface.res);
             gl.uniform1i(t.u.uHasClasses, this.surface.hasClasses ? 1 : 0);
             gl.uniform2f(t.u.uCentreG, w.centreGX, w.centreGY);
