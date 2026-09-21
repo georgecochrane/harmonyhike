@@ -1,4 +1,4 @@
-// TrailSynth for the web: wires the land, the simulation (in the audio thread), the picture and the controls together.
+// HarmonyHike for the web: wires the land, the simulation (in the audio thread), the picture and the controls together.
 import { Engine } from './audio.js';
 import { Renderer } from './render.js';
 import { View, metresBetween, offsetLatLon } from './view.js';
@@ -29,8 +29,8 @@ const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulation
 
 window.__errors = []; window.addEventListener('error', e => window.__errors.push(e.message)); window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
 const settings = { ...DEFAULTS };
-try { Object.assign(settings, JSON.parse(localStorage.getItem('trailsynth.settings') || '{}')); } catch (e) { /* first run */ }
-const save = () => { try { localStorage.setItem('trailsynth.settings', JSON.stringify(settings)); } catch (e) { /* private window */ } };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('harmonyhike.settings') || '{}')); } catch (e) { /* first run */ }
+const save = () => { try { localStorage.setItem('harmonyhike.settings', JSON.stringify(settings)); } catch (e) { /* private window */ } };
 
 const engine = new Engine(), midi = new MidiBridge(), terrain = new TerrainSource();
 let renderer, view;
@@ -366,6 +366,6 @@ $('start-btn').addEventListener('click', async () => {
     }
 });
 
-window.trailsynth = { engine, settings, get view() { return view; }, loadLand };
+window.harmonyhike = { engine, settings, get view() { return view; }, loadLand };
 
 if (new URLSearchParams(location.search).has('autostart')) setTimeout(() => $('start-btn').click(), 100);

@@ -3,8 +3,8 @@ import { el } from './ui.js';
 export function openAbout() {
     const link = (text, href) => el('a', { href, target: '_blank', rel: 'noopener', text });
     const box = el('div', { class: 'box glass' },
-        el('h2', { text: 'About TrailSynth' }),
-        el('p', {}, 'Little hikers walk a real piece of the Earth and play music from the ground under their feet. This is the web version of the TrailSynth desktop app.'),
+        el('h2', { text: 'About HarmonyHike' }),
+        el('p', {}, 'Little hikers walk a real piece of the Earth and play music from the ground under their feet. This is the web version of the HarmonyHike desktop app.'),
         el('div', { class: 'credits' },
             el('h3', { text: 'MAP AND TERRAIN DATA' }),
             el('p', {}, link('OpenStreetMap', 'https://www.openstreetmap.org/copyright'), ' contributors (land cover, read from map tiles; ODbL). Place names by ', link('Nominatim', 'https://nominatim.org/'), '.'),
@@ -13,7 +13,7 @@ export function openAbout() {
             el('h3', { text: 'CHARACTERS AND ANIMALS' }),
             el('p', {}, 'The animals are low-poly models by ', link('Quaternius', 'https://quaternius.com/'), ' (CC0): ', link('Farm Animals', 'https://opengameart.org/content/lowpoly-animated-farm-animal-pack'), ', ',
                 link('Animal Pack Vol. 2', 'https://opengameart.org/content/animated-animales-low-poly'), ', ', link('5 Low Poly Animals', 'https://opengameart.org/content/5-low-poly-animals'), ' and the deer from ',
-                link('Ultimate Animated Animals', 'https://poly.pizza/bundle/Animated-Animal-Pack-ILAPXeUYiS'), '. The hikers are original to TrailSynth.'),
+                link('Ultimate Animated Animals', 'https://poly.pizza/bundle/Animated-Animal-Pack-ILAPXeUYiS'), '. The hikers are original to HarmonyHike.'),
             el('h3', { text: 'SKIES' }),
             el('p', {}, 'CC0 sky panoramas from ', link('Poly Haven', 'https://polyhaven.com/'), ': Belfast Sunset, Farm Field, Kloofendal 48d Partly Cloudy, Kloofendal Overcast, Kloppenheim 05, Qwantani Dusk 2, Sunflowers and Wasteland Clouds (by Greg Zaal, Jarod Guest, Sergej Majboroda, Dimitrios Savva).'),
             el('h3', { text: 'SOUND' }),

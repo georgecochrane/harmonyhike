@@ -65,7 +65,7 @@ export function twoSelectRow(label, optionsA, getA, setA, optionsB, getB, setB) 
 }
 
 // Pages of titled columns under the map, with tabs.
-export function buildPages(tabsEl, pagesEl, pages, rememberKey = 'trailsynth.page') {
+export function buildPages(tabsEl, pagesEl, pages, rememberKey = 'harmonyhike.page') {
     const rows = [];
     let current = Math.min(pages.length - 1, parseInt(localStorage.getItem(rememberKey) ?? '0', 10) || 0);
     const buttons = pages.map((p, i) => el('button', { text: p.name, onclick: () => show(i) }));

@@ -1,4 +1,4 @@
-// Loads the TrailSynth WebAssembly core (simulation, note-making, sound engine) and wraps its C interface.
+// Loads the HarmonyHike WebAssembly core (simulation, note-making, sound engine) and wraps its C interface.
 // Works in a browser main thread, an AudioWorklet, or Node: it needs only WebAssembly, no fetch, no TextDecoder.
 
 export const PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave',

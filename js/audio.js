@@ -21,11 +21,11 @@ export class Engine {
         if (new URLSearchParams(location.search).has('nodevice')) return this.startWithoutDevice(params);
         this.context = new AudioContext({ latencyHint: 'interactive' });
         await this.context.audioWorklet.addModule('js/audio-worklet.bundle.js');
-        this.node = new AudioWorkletNode(this.context, 'trailsynth', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
+        this.node = new AudioWorkletNode(this.context, 'harmonyhike', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
         this.node.connect(this.context.destination);
         const ready = new Promise(resolve => { this.resolveReady = resolve; });
         this.node.port.onmessage = e => this.receive(e.data);
-        const wasm = await (await fetch('trailsynth-core.wasm')).arrayBuffer();
+        const wasm = await (await fetch('harmonyhike-core.wasm')).arrayBuffer();
         this.node.port.postMessage({ cmd: 'init', wasm, params });
         await ready;
         this.ready = true;
@@ -33,7 +33,7 @@ export class Engine {
 
     // For automated tests on a machine with no audio device: the same core, run from a timer on this thread (nothing is played).
     async startWithoutDevice(params) {
-        const wasm = await (await fetch('trailsynth-core.wasm')).arrayBuffer();
+        const wasm = await (await fetch('harmonyhike-core.wasm')).arrayBuffer();
         this.core = await createCore(wasm, 44100);
         for (const [k, v] of Object.entries(params)) this.core.setParam(k, v);
         this.context = { currentTime: 0, getOutputTimestamp: () => ({ contextTime: 0, performanceTime: performance.now() }) };

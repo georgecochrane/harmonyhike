@@ -1,8 +1,8 @@
-// The audio thread: runs the TrailSynth core (simulation, note-making, sound) and hands back audio, MIDI, and pictures of the world.
+// The audio thread: runs the HarmonyHike core (simulation, note-making, sound) and hands back audio, MIDI, and pictures of the world.
 import { createCore } from './core.js';
 import { applyCommand, presetList } from './commands.js';
 
-class TrailSynthProcessor extends AudioWorkletProcessor {
+class HarmonyHikeProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
         this.core = null;
@@ -40,4 +40,4 @@ class TrailSynthProcessor extends AudioWorkletProcessor {
     }
 }
 
-registerProcessor('trailsynth', TrailSynthProcessor);
+registerProcessor('harmonyhike', HarmonyHikeProcessor);

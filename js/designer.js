@@ -21,12 +21,12 @@ const skewed = (min, max, skew) => ({ toPos: v => Math.pow((v - min) / (max - mi
 
 let stored;
 export function loadSavedSounds(engine) {
-    try { stored = JSON.parse(localStorage.getItem('trailsynth.sounds') || 'null'); } catch (e) { stored = null; }
+    try { stored = JSON.parse(localStorage.getItem('harmonyhike.sounds') || 'null'); } catch (e) { stored = null; }
     if (!stored) return;
     stored.presets.forEach((p, i) => { if (i < engine.presets.length) { engine.send('setPreset', { index: i, values: p.values }); engine.send('renamePreset', { index: i, name: p.name }); engine.presets[i] = p; } else engine.send('addPreset', { values: p.values, name: p.name }); });
     if (stored.reverb) engine.send('reverb', stored.reverb);
 }
-const persist = (engine, reverb) => { try { localStorage.setItem('trailsynth.sounds', JSON.stringify({ presets: engine.presets, reverb })); } catch (e) { /* private window */ } };
+const persist = (engine, reverb) => { try { localStorage.setItem('harmonyhike.sounds', JSON.stringify({ presets: engine.presets, reverb })); } catch (e) { /* private window */ } };
 
 export function openSoundDesigner(engine) {
     let current = 0;
@@ -149,7 +149,7 @@ function fromJson(text) {
     return out;
 }
 function download(engine) {
-    const a = el('a', { href: URL.createObjectURL(new Blob([toJson(engine)], { type: 'application/json' })), download: 'TrailSynth presets.json' });
+    const a = el('a', { href: URL.createObjectURL(new Blob([toJson(engine)], { type: 'application/json' })), download: 'HarmonyHike presets.json' });
     document.body.append(a); a.click(); a.remove();
 }
 function upload(engine, done) {
