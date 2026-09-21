@@ -80,6 +80,7 @@ export function initPhone(view, { onView } = {}) {
         const grip = sheet.firstChild;
         // Move the desktop pieces into the sheet and dock; they are moved back if the window grows.
         const move = (node, to) => { homes.push({ node, parent: node.parentNode, next: node.nextSibling }); to.append(node); };
+        move($('pause'), $('map'));   // Pause / Resume lives in the map's top left corner, always in reach
         move($('tabs'), dockNode);
         dockNode.prepend(extras);
         for (const id of ['top', 'modes', 'pages', 'hiker-panel']) move($(id), sheet);
