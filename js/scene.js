@@ -37,8 +37,10 @@ Object.assign(View.prototype, {
 
         // The relief scaling eases to what this ground calls for.
         if (!Number.isFinite(this.shownMid)) { this.shownMid = f.targetMid; this.shownExag = f.targetExag; }
-        else {
-            const blend = 1 - Math.exp(-6 * dt);
+        else if (this.isPanning()) {
+            this.lastPanMs = now;   // dragging the map: keep the relief scaling as it is, or the hills swell and shrink as different ground comes into the window
+        } else {
+            const blend = 1 - Math.exp(-(now - (this.lastPanMs ?? -1e9) < 2500 ? 1.2 : 6) * dt);   // (just after a drag it settles slowly, not with a jump)
             this.shownMid += (f.targetMid - this.shownMid) * blend; this.shownExag += (f.targetExag - this.shownExag) * blend;
             if (Math.abs(f.targetMid - this.shownMid) < 0.01) this.shownMid = f.targetMid;
             if (Math.abs(f.targetExag - this.shownExag) < 0.001) this.shownExag = f.targetExag;
