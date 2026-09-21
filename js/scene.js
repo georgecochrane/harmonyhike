@@ -181,7 +181,7 @@ Object.assign(View.prototype, {
             const groundY = f.surfaceY(w.x, w.y);
             hikers.push({ channel: ch, x: w.x, z: w.y, groundY, yaw: HALF_PI - head, scale: f.hikerHeight / 2.0, swing: K.limbSwing * Math.sin(this.stride.get(ch)) });
             const head3 = f.project(w.x, groundY + f.hikerHeight, w.y);
-            labels.push({ channel: ch, x: head3.x, y: head3.y - 10 });
+            labels.push({ channel: ch, x: head3.x, y: head3.y - 10, talk: h.talkAge < 2.6 ? h.talkAge : -1 });
             const age = h.noteAge, length = h.noteSeconds;
             if (this.options.overlays.glows && age < length) {
                 const u = age / length;
@@ -338,6 +338,14 @@ Object.assign(View.prototype, {
         g.clearRect(0, 0, f.cssW, f.cssH);
         const o = this.options.overlays;
 
+        for (const l of items.labels) if (l.talk >= 0) {   // a speech bubble: "..." with the dots lighting in turn, fading as the talk ends
+            const alpha = l.talk < 2 ? 1 : 1 - (l.talk - 2) / 0.6, bx = l.x, by = l.y - 20;
+            g.globalAlpha = alpha; g.fillStyle = 'rgba(255,255,255,0.92)'; g.beginPath(); g.roundRect(bx - 14, by - 8, 28, 16, 7); g.fill();
+            g.beginPath(); g.moveTo(bx - 3, by + 7.5); g.lineTo(bx + 3, by + 7.5); g.lineTo(bx, by + 13); g.fill();
+            const lit = Math.floor(l.talk * 4) % 3;
+            for (let d = 0; d < 3; ++d) { g.fillStyle = `rgba(58,42,32,${d <= lit ? 0.95 : 0.35})`; g.beginPath(); g.arc(bx - 7.5 + 7.5 * d, by, 1.7, 0, TAU); g.fill(); }
+            g.globalAlpha = 1;
+        }
         if (o.numbers) for (const l of items.labels) {
             g.fillStyle = 'rgba(255,255,255,0.92)'; g.beginPath(); g.arc(l.x, l.y, 7, 0, TAU); g.fill();
             g.fillStyle = '#000'; g.font = 'bold 10px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(l.channel), l.x, l.y + 0.5);

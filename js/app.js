@@ -20,7 +20,7 @@ const WORLD_MARGIN = 5;
 const DEFAULTS = {
     numHikers: 6, speed: 35, noteSpeed: 0, gaitMatch: 15, simulationRate: 20, animalDensity: 0.3, scaleType: 3, rootNote: 0, minOctave: 3, maxOctave: 5,
     noteLength: 100, noteLengthRandom: 0, favorRoot: 0, velocity: 100, velocityRandom: 0, paused: 0, arpOn: 0, arpPattern: 0, arpRandom: 0, arpRate: 4,
-    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60, keyMode: 0, keyMinutes: 3,
+    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60, keyMode: 0, keyMinutes: 3, pairs: 1,
     // (web only)
     diameterFeet: 5280, terrainDetail: 2, realLight: 0, cloudOpacity: 50,
     showTrees: 1, treeDensity: 60, autoRotate: 0, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
@@ -28,7 +28,7 @@ const DEFAULTS = {
 };
 const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'noteLength', 'noteLengthRandom',
     'favorRoot', 'velocity', 'velocityRandom', 'paused', 'arpOn', 'arpPattern', 'arpRandom', 'arpRate', 'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode',
-    'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes'];
+    'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes', 'pairs'];
 
 window.__errors = []; window.addEventListener('error', e => window.__errors.push(e.message)); window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
 const settings = { ...DEFAULTS };
@@ -145,7 +145,8 @@ function buildControls() {
             { title: 'Walking', rows: () => [
                 sliderRow('Hikers', { min: 0, max: 16, default: 6 }, S('numHikers'), v => { setSetting('numHikers', v); }),
                 R('Speed', { min: 1, max: 100 }, 'speed')(),
-                R('Sim Rate (Hz)', { min: 0.5, max: 60, step: 0.1, ...logSlider(0.5, 60), format: v => v.toFixed(1) }, 'simulationRate')()] },
+                R('Sim Rate (Hz)', { min: 0.5, max: 60, step: 0.1, ...logSlider(0.5, 60), format: v => v.toFixed(1) }, 'simulationRate')(),
+                selectRow('In pairs', ['Off', 'Sometimes', 'Often'], S('pairs'), P('pairs'))] },
             { title: 'Rhythm of their notes', rows: () => [
                 R('Note Speed', { min: 0, max: 100, format: v => v < 0.5 ? 'Follow' : String(Math.round(v)) }, 'noteSpeed')(),
                 R('Gait Match', { min: 0, max: 100, format: pct }, 'gaitMatch')()] }] },

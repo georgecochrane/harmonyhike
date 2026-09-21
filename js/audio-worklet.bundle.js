@@ -6,7 +6,7 @@
 
 const PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave',
     'noteLength', 'noteLengthRandom', 'favorRoot', 'velocity', 'velocityRandom', 'paused', 'arpOn', 'arpPattern', 'arpRandom', 'arpRate',
-    'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode', 'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes'];
+    'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode', 'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes', 'pairs'];
 
 const PROFILE_FIELDS = ['speed', 'noteSpeed', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'velocityScale', 'velocityRandom',
     'favorRoot', 'midiChannel', 'soundPreset', 'daring', 'linearity', 'preference'];
@@ -105,7 +105,7 @@ async function createCore (wasmBytes, sampleRate) {
                 const hikers = [], animals = [], birds = [];
                 let at = 10;
                 for (let i = 0; i < a[1]; ++i, at += 11)
-                    hikers.push ({ channel: a[at], x: a[at + 1], y: a[at + 2], heading: a[at + 3], speed: a[at + 4], noteAge: a[at + 5], noteSeconds: a[at + 6], tiredness: a[at + 7], midiChannel: a[at + 8], soundPreset: a[at + 9] });
+                    hikers.push ({ channel: a[at], x: a[at + 1], y: a[at + 2], heading: a[at + 3], speed: a[at + 4], noteAge: a[at + 5], noteSeconds: a[at + 6], tiredness: a[at + 7], midiChannel: a[at + 8], soundPreset: a[at + 9], talkAge: a[at + 10] });
                 for (let i = 0; i < a[2]; ++i, at += 6)
                     animals.push ({ type: a[at], x: a[at + 1], y: a[at + 2], heading: a[at + 3], speed: a[at + 4], encounterRadius: a[at + 5] });
                 for (let i = 0; i < a[9]; ++i, at += 6)
