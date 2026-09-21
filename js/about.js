@@ -4,7 +4,7 @@ export function openAbout() {
     const link = (text, href) => el('a', { href, target: '_blank', rel: 'noopener', text });
     const box = el('div', { class: 'box glass' },
         el('h2', { text: 'About HarmonyHike' }),
-        el('p', {}, 'Little hikers walk a real piece of the Earth and play music from the ground under their feet. This is the web version of the HarmonyHike desktop app.'),
+        el('p', {}, 'Set hikers loose in your favorite places. Each makes notes and shapes based on how and where they hike. Enjoy the fresh air standalone, or send your MIDI instruments into the wild. This is the web version of the HarmonyHike desktop app.'),
         el('div', { class: 'credits' },
             el('h3', { text: 'MAP AND TERRAIN DATA' }),
             el('p', {}, link('OpenStreetMap', 'https://www.openstreetmap.org/copyright'), ' contributors (land cover, read from map tiles; ODbL). Place names by ', link('Nominatim', 'https://nominatim.org/'), '.'),

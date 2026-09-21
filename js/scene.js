@@ -291,7 +291,10 @@ Object.assign(View.prototype, {
                 g.fillStyle = `rgba(255,255,255,${alpha})`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(text, x + 7, y + 9.5);
             };
             caption(`Diameter ${diameter}   |   relief ${Math.round(reliefFeet)} ft   |   vertical x${f.exag.toFixed(1)}`, 8, f.cssH - 26, 0.85);
-            caption(this.mode === 'rotate' ? 'Drag to rotate - scroll or pinch to zoom - Option-drag to pan - click a hiker to hear it - Cmd-click to pick one, Cmd-drag to pick several'
+            caption(this.touch
+                ? (this.mode === 'rotate' ? 'Drag turns - pinch zooms - two fingers slide the map - tap a hiker'
+                    : 'Tap a hiker to remove it - drag to move it - tap ground to add')
+                : this.mode === 'rotate' ? 'Drag to rotate - scroll or pinch to zoom - Option-drag to pan - click a hiker to hear it - Cmd-click to pick one, Cmd-drag to pick several'
                 : 'Click a hiker to remove it, drag it to move it, click the ground to add one - Cmd-click to pick one, Cmd-drag to pick several', 8, 6, 0.75);
         }
     },

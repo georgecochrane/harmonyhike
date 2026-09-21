@@ -9,6 +9,8 @@ import { el, buildPages, sliderRow, selectRow, toggleRow, buttonRow, twoSelectRo
 import { openSoundDesigner, loadSavedSounds } from './designer.js';
 import { openAbout } from './about.js';
 import { runSelfTest } from './selftest.js';
+import { initPhone } from './phone.js';
+import { randomPlace } from './places.js';
 
 const $ = id => document.getElementById(id);
 const FEET = 0.3048;
@@ -29,7 +31,9 @@ const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulation
 
 window.__errors = []; window.addEventListener('error', e => window.__errors.push(e.message)); window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
 const settings = { ...DEFAULTS };
-try { Object.assign(settings, JSON.parse(localStorage.getItem('harmonyhike.settings') || '{}')); } catch (e) { /* first run */ }
+let firstRun = true;
+try { const stored = localStorage.getItem('harmonyhike.settings'); if (stored) { Object.assign(settings, JSON.parse(stored)); firstRun = false; } } catch (e) { /* first run */ }
+if (firstRun) Object.assign(settings, randomPlace());   // a named, lovely place to begin with
 const save = () => { try { localStorage.setItem('harmonyhike.settings', JSON.stringify(settings)); } catch (e) { /* private window */ } };
 
 const engine = new Engine(), midi = new MidiBridge(), terrain = new TerrainSource();
@@ -168,7 +172,15 @@ function buildControls() {
             { title: 'On the map', rows: () => [
                 toggleRow('', 'Note glows', S('overlayGlows'), P('overlayGlows')), toggleRow('', 'Hiker numbers', S('overlayNumbers'), P('overlayNumbers')),
                 toggleRow('', 'Compass', S('overlayCompass'), P('overlayCompass')), toggleRow('', 'Land-type legend', S('overlayLegend'), P('overlayLegend')),
-                toggleRow('', 'Size readout and hints', S('overlayCaptions'), P('overlayCaptions'))] }] },
+                toggleRow('', 'Size readout and hints', S('overlayCaptions'), P('overlayCaptions'))] },
+            { title: 'Defaults', rows: () => [
+                buttonRow('', 'Copy my settings', async () => {
+                    const { hikers, lat, lon, location, midiOut, ...mine } = settings;
+                    const text = JSON.stringify({ settings: mine, sounds: (() => { try { return JSON.parse(localStorage.getItem('harmonyhike.sounds') || 'null'); } catch (e) { return null; } })() });
+                    try { await navigator.clipboard.writeText(text); $('status').textContent = 'Settings copied - paste them to whoever sets the defaults'; } catch (e) { prompt('Copy these settings:', text); }
+                }),
+                buttonRow('', 'Reset everything', () => { if (confirm('Put every setting and sound back to how HarmonyHike first starts?')) { try { localStorage.removeItem('harmonyhike.settings'); localStorage.removeItem('harmonyhike.sounds'); } catch (e) { /* private window */ } location.reload(); } }),
+                el('div', { class: 'row toggle' }, el('span'), el('span', { class: 'small', text: 'Your settings are remembered in this browser.' }))] }] },
         { name: 'Sound', columns: [
             { title: 'Output', rows: () => {
                 const rows = [selectRow('Output', ['MIDI', 'Internal sound', 'MIDI + internal'], S('outputMode'), v => { setSetting('outputMode', v); pages.show(3); }),
@@ -217,16 +229,16 @@ function renderHikerPanel() {
         engine.send('setProfiles', { channels: selected, changes: { speed: -1, noteSpeed: -1, scaleType: -1, rootNote: -1, minOctave: -99, maxOctave: -99, velocityScale: -1, velocityRandom: -1, favorRoot: -1, midiChannel: -1, soundPreset: -1, daring: 0.5, linearity: 1, preference: 0 } });
         setTimeout(renderHikerPanel, 60);
     } }));
-    if (!selected.length) { info.textContent = 'Nothing selected. Cmd-click a hiker (or Cmd-drag a box) to edit it here.'; return; }
+    if (!selected.length) { info.textContent = 'Nothing selected. ' + (view.touch ? 'Tap a hiker, or use Select on the map, to edit it here.' : 'Cmd-click a hiker (or Cmd-drag a box) to edit it here.') + ''; return; }
     info.textContent = `${selected.length} ${selected.length === 1 ? 'hiker' : 'hikers'} selected (${selected.join(', ')}).` + (selected.length > 1 ? '\nChanges apply to all.' : '');
     engine.ask('getProfile', { channel: selected[0] }).then(p => {
         const edit = changes => engine.send('setProfiles', { channels: selected, changes });
         const field = (label, node) => el('div', { class: 'field' }, el('label', { text: label }), node);
         const slider = (min, max, value, fmt, onChange, step = 1) => {
             const range = el('input', { type: 'range', min, max, step, value });
-            const val = el('span', { class: 'val', text: fmt(value), style: 'float:right;margin-top:-20px' });
+            const val = el('span', { class: 'val', text: fmt(value) });
             range.addEventListener('input', () => { val.textContent = fmt(+range.value); onChange(+range.value); });
-            return el('div', {}, range, val);
+            return el('div', { class: 'hs' }, range, val);
         };
         const sect = t => el('div', { class: 'sect', text: t });
         const g = k => settings[k];
@@ -271,6 +283,7 @@ async function boot() {
     for (const k of ['Glows', 'Numbers', 'Compass', 'Legend', 'Captions']) view.options.overlays[k.toLowerCase()] = !!settings['overlay' + k];
     await renderer.loadAssets();
 
+    initPhone(view);
     view.on('window', maybeLoadWorld);
     view.on('selection', list => { selected = list; renderHikerPanel(); });
     view.on('addHiker', async s => { await engine.ask('addHiker', { x: s.x, y: s.y }); syncHikerCount(); });
@@ -282,6 +295,7 @@ async function boot() {
     view.on('splash', pan => engine.send('splash', { pan }));
     view.on('pan', (east, south) => {
         pendingPan = { x: pendingPan.x + east, y: pendingPan.y + south };
+        if (!/^(near |-?\d)/.test(settings.location)) { settings.location = 'near ' + settings.location; $('location').value = settings.location; save(); }
         if (!requested) return;
         const c = offsetLatLon(requested.lat, requested.lon, east, south);
         loadLand(c.lat, c.lon, 0.5 * settings.diameterFeet * FEET, { announce: false });
@@ -326,7 +340,7 @@ function wireButtons() {
     $('clear-hikers').onclick = () => { engine.send('clearHikers'); settings.numHikers = 0; pages?.refresh(); selected = []; view.selected = new Set(); renderHikerPanel(); };
     $('about-btn').onclick = () => openAbout();
     const go = async () => {
-        const text = $('location').value.trim(); if (!text) return;
+        const text = $('location').value.trim().replace(/^near /i, ''); if (!text) return;
         $('status').textContent = 'Looking up ' + text + '...';
         const found = await geocode(text);
         if (!found) { $('status').textContent = 'Place not found - showing previous terrain'; return; }
@@ -338,6 +352,14 @@ function wireButtons() {
         refreshWeather();
     };
     $('go').onclick = go;
+    $('surprise').onclick = async () => {
+        const p = randomPlace(settings.location.replace(/^near /, ''));
+        $('location').value = p.location; Object.assign(settings, p); save();
+        view.windowLat = null; view.world = null; world.pending = false; pendingPan = { x: 0, y: 0 };
+        await loadLand(p.lat, p.lon, 0.5 * settings.diameterFeet * FEET);
+        view.windowLat = p.lat; view.windowLon = p.lon;
+        refreshWeather();
+    };
     $('location').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
     window.addEventListener('keydown', e => { if (e.key === ' ' && e.target === document.body) { e.preventDefault(); $('pause').click(); } });
 }

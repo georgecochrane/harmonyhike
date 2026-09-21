@@ -57,8 +57,8 @@ export class View {
         this.attach();
     }
 
-    on(name, fn) { this.callbacks[name] = fn; }
-    emit(name, ...args) { this.callbacks[name]?.(...args); }
+    on(name, fn) { (this.callbacks[name] ||= []).push(fn); }
+    emit(name, ...args) { for (const fn of this.callbacks[name] || []) fn(...args); }
 
     // ---------------------------------------------------------------- data in
     setCoarse(surface) {
@@ -198,8 +198,18 @@ export class View {
         this.overlay.setPointerCapture(e.pointerId);
         const p = this.local(e);
         this.pointers.set(e.pointerId, p);
-        if (this.pointers.size === 2) { this.dragging = { pinch: true, dist: this.pinchDistance(), zoom: this.zoom }; return; }
-        const f = this.lastFrame; if (!f) return;
+        const f = this.lastFrame;
+        if (this.pointers.size === 2) {
+            // Two fingers: pinch to zoom, twist to turn, and drag to slide the map (moves the window over the land, like Option-drag).
+            if (this.dragging?.pan) this.commitPan();
+            const c = this.pinchCentre(), g = f && this.windowLat !== null ? this.pickPlane(f, c) : null;
+            this.marquee = null;
+            this.dragging = { pinch: true, dist: this.pinchDistance(), zoom: this.zoom, angle: this.pinchAngle(), yaw: this.yaw, moved: false };
+            if (g) { const grab = offsetLatLon(this.windowLat, this.windowLon, g.x * f.windowRadius, g.y * f.windowRadius); this.dragging.grabLat = grab.lat; this.dragging.grabLon = grab.lon; }
+            return;
+        }
+        if (this.pointers.size > 2) return;
+        if (!f) return;
         const base = { start: p, last: p, moved: false, travel: 0 };
         if (e.altKey) {
             const g = this.pickPlane(f, p);
@@ -210,7 +220,7 @@ export class View {
             }
             return;
         }
-        if (e.metaKey || e.ctrlKey) { this.dragging = { ...base, marquee: true, additive: e.shiftKey }; this.marquee = { a: p, b: p }; return; }
+        if (e.metaKey || e.ctrlKey || this.selectMode) { this.dragging = { ...base, marquee: true, additive: e.shiftKey || this.selectMode }; this.marquee = { a: p, b: p }; return; }
         const hit = this.hikerAt(f, p);
         if (this.mode === 'manage') {
             if (hit) this.dragging = { ...base, hiker: hit };
@@ -223,14 +233,25 @@ export class View {
         this.dragging = { ...base, orbit: true, clickedHiker: hit };
     }
 
-    pinchDistance() { const [a, b] = [...this.pointers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); }
+    pinchDistance() { const [a, b] = [...this.pointers.values()]; return Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)); }
+    pinchAngle() { const [a, b] = [...this.pointers.values()]; return Math.atan2(b.y - a.y, b.x - a.x); }
+    pinchCentre() { const [a, b] = [...this.pointers.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
 
     pointerMove(e) {
         const p = this.local(e);
         if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, p);
         const f = this.lastFrame;
         const d = this.dragging;
-        if (d?.pinch && this.pointers.size === 2) { this.zoom = clamp(d.zoom * this.pinchDistance() / d.dist, 0.5, 3); return; }
+        if (d?.pinch && this.pointers.size === 2) {
+            this.zoom = clamp(d.zoom * this.pinchDistance() / d.dist, 0.5, 3);
+            let turn = this.pinchAngle() - d.angle; turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+            if (Math.abs(turn) > 0.05 || d.turning) { d.turning = true; this.yaw = d.yaw - turn; }   // ignore tiny twists so a plain pinch stays steady
+            if (f && d.grabLat !== undefined) {
+                const g = this.pickPlane(f, this.pinchCentre());
+                if (g) { d.moved = true; this.limitWindow(offsetLatLon(d.grabLat, d.grabLon, -g.x * f.windowRadius, -g.y * f.windowRadius)); }
+            }
+            return;
+        }
         if (!d) {
             if (f && this.mode === 'manage') { const hit = this.hikerAt(f, p); this.hover = hit ? { hiker: hit } : { ground: this.pickGround(f, p) }; }
             return;
@@ -271,13 +292,14 @@ export class View {
         this.pointers.delete(e.pointerId);
         const d = this.dragging, f = this.lastFrame;
         if (!d) return;
-        if (d.pinch) { if (this.pointers.size < 2) this.dragging = null; return; }
+        if (d.pinch) { if (this.pointers.size < 2) { if (d.moved) this.commitPan(); this.dragging = null; } return; }
         if (d.pan) this.commitPan();
         else if (d.marquee) {
             const box = this.marquee, x0 = Math.min(box.a.x, box.b.x), x1 = Math.max(box.a.x, box.b.x), y0 = Math.min(box.a.y, box.b.y), y1 = Math.max(box.a.y, box.b.y);
             const hits = new Set();
             if (x1 - x0 < 4 && y1 - y0 < 4) { const h = this.hikerAt(f, d.start); if (h) hits.add(h); }
             else for (const h of this.visibleHikers(f)) if (h.sx >= x0 && h.sx <= x1 && h.sy >= y0 && h.sy <= y1) hits.add(h.channel);
+            if (this.selectMode && hits.size === 0 && x1 - x0 < 4 && y1 - y0 < 4) { this.selected = new Set(); this.emit('selection', []); this.marquee = null; this.dragging = null; return; }
             let next = d.additive ? new Set(this.selected) : new Set();
             if (d.additive && hits.size === 1 && x1 - x0 < 4) { const h = [...hits][0]; if (next.has(h)) next.delete(h); else next.add(h); }
             else for (const h of hits) next.add(h);
@@ -285,7 +307,10 @@ export class View {
             this.marquee = null;
         } else if (d.hiker) {
             if (!d.moved) this.emit('removeHiker', d.hiker);
-        } else if (d.orbit && !d.moved && d.clickedHiker) this.emit('previewNote', d.clickedHiker);
+        } else if (d.orbit && !d.moved && d.clickedHiker) {
+            this.emit('previewNote', d.clickedHiker);
+            if (this.touch) { this.selected = new Set([d.clickedHiker]); this.emit('selection', [d.clickedHiker]); }   // a tap on a hiker also picks it
+        } else if (d.orbit && !d.moved) this.emit('tap');
         this.dragging = null;
     }
 
