@@ -42,8 +42,9 @@ export class Engine {
         const ready = new Promise(resolve => { this.resolveReady = resolve; });
         this.node.port.onmessage = e => this.receive(e.data);
         const wasm = await (await fetch('harmonyhike-core.wasm')).arrayBuffer();
-        this.node.port.postMessage({ cmd: 'init', wasm, params });
+        this.node.port.postMessage({ cmd: 'init', wasm: wasm.slice(0), params });
         await ready;
+        try { this.treeCore = await createCore(wasm, 44100); } catch (e) { this.treeCore = null; }   // (a second copy here on the main thread, only to lay out the forests)
         this.ready = true;
     }
 
@@ -69,6 +70,14 @@ export class Engine {
         this.presets = presetList(this.core);
         this.ready = true;
         this.emit('presets', this.presets);
+    }
+
+    // The forest for a land surface ({ lat, lon, radius, res, heights, classes, minH, maxH }): 6 numbers per tree, or null when it cannot be made yet.
+    generateTrees(s) {
+        const core = this.treeCore || this.core;
+        if (!core || !s.classes || !s.heights) return null;
+        let lo = Infinity, hi = -Infinity; for (let i = 0; i < s.heights.length; i += 7) { const h = s.heights[i]; if (h < lo) lo = h; if (h > hi) hi = h; }
+        return core.generateTrees(s.lat, s.lon, s.radius, s.res, s.heights, s.classes, lo, hi);
     }
 
     receive(m) {

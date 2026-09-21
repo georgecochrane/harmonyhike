@@ -23,7 +23,7 @@ const DEFAULTS = {
     arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60,
     // (web only)
     diameterFeet: 5280, terrainDetail: 2, realLight: 0, cloudOpacity: 50,
-    overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
+    showTrees: 1, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
     location: 'Yosemite Valley', lat: 37.7456, lon: -119.5936,
 };
 const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'noteLength', 'noteLengthRandom',
@@ -170,6 +170,7 @@ function buildControls() {
                 R('Animal Density', { min: 0, max: 1, step: 0.01 }, 'animalDensity')()] },
             { title: 'Sky', rows: () => [
                 toggleRow('', 'Light by time of day', S('realLight'), P('realLight')),
+                toggleRow('', 'Trees', S('showTrees'), v => { setSetting('showTrees', v); view.options.trees = !!v; }),
                 R('Clouds', { min: 0, max: 100, format: offOr('%') }, 'cloudOpacity')()] },
             { title: 'On the map', rows: () => [
                 toggleRow('', 'Note glows', S('overlayGlows'), P('overlayGlows')), toggleRow('', 'Hiker numbers', S('overlayNumbers'), P('overlayNumbers')),
@@ -287,6 +288,8 @@ async function boot() {
     await renderer.loadAssets();
 
     initPhone(view);
+    view.treeGen = surface => engine.generateTrees(surface);
+    view.options.trees = settings.showTrees !== 0;
     view.on('window', maybeLoadWorld);
     view.on('selection', list => { selected = list; renderHikerPanel(); });
     view.on('addHiker', async s => { await engine.ask('addHiker', { x: s.x, y: s.y }); syncHikerCount(); });

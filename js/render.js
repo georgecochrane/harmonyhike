@@ -107,6 +107,64 @@ void main() {
     o = vec4(vColour, 1.0);
 }`;
 
+// ------------------------------------------------------------------------------------------------ trees
+// Instanced: one small mesh per kind of tree (its shape in units of the tree's own height and radius), drawn once per tree with its place, size and colour.
+// The top of a tree sways in the wind (more the higher up it is).
+const TREE_VS = HEADER + `
+uniform mat4 uViewProj;
+uniform vec3 uLight;
+uniform float uTime, uSway;
+uniform vec2 uWind;
+in vec3 aPos, aNormal;
+in vec2 aBendPart;                 // how far up the tree (sway), and which part (0 crown, 1 trunk, 2 upper crown)
+in vec3 iBase;                     // where it stands (window x, ground y, window z)
+in vec2 iSize;                     // height, radius
+in vec3 iColour;
+in float iPhase;
+flat out vec3 vColour;
+void main() {
+    float height = iSize.x, radius = iSize.y;
+    float swing = uSway * height * (sin(uTime * 1.6 + iPhase) + 0.25 * sin(uTime * 3.1 + 2.0 * iPhase));
+    float bend = aBendPart.x * aBendPart.x;
+    vec3 world = iBase + vec3(aPos.x * radius, aPos.y * height, aPos.z * radius) + vec3(uWind.x, 0.0, uWind.y) * swing * bend;
+    gl_Position = uViewProj * vec4(world, 1.0);
+    float lit = max(0.0, dot(normalize(aNormal), uLight));
+    vec3 base = aBendPart.y > 0.5 && aBendPart.y < 1.5 ? vec3(0.30, 0.21, 0.14) : iColour * (aBendPart.y > 1.5 ? 1.07 : aPos.y < 0.5 ? 0.93 : 1.0);
+    vColour = min(vec3(1.0), base * (0.5 + 0.65 * lit));
+}`;
+const TREE_FS = HEADER + `
+flat in vec3 vColour;
+out vec4 o;
+void main() { o = vec4(vColour, 1.0); }`;
+
+// The shapes: [x, y, z, bend, part] per vertex, three vertices per triangle; normals are worked out (pointing away from the trunk's axis).
+function treeShape(kind) {
+    const tris = [];
+    const pyramid = (y0, y1, r, bend0, bend1, part) => {
+        const b = [[-r, y0, -r], [r, y0, -r], [r, y0, r], [-r, y0, r]], top = [0, y1, 0];
+        for (let i = 0; i < 4; ++i) tris.push([[...b[i], bend0, part], [...b[(i + 1) % 4], bend0, part], [...top, bend1, part]]);
+    };
+    if (kind === 1) { pyramid(0.14, 0.62, 1, 0.10, 0.55, 0); pyramid(0.42, 1.0, 0.66, 0.40, 1.0, 2); }
+    else {
+        const w = 0.14;
+        const a = [[-w, 0, -w], [w, 0, -w], [w, 0, w], [-w, 0, w]], c = a.map(p => [p[0], 0.42, p[2]]);
+        for (let i = 0; i < 4; ++i) { const j = (i + 1) % 4; tris.push([[...a[i], 0, 1], [...a[j], 0, 1], [...c[j], 0.4, 1]]); tris.push([[...a[i], 0, 1], [...c[j], 0.4, 1], [...c[i], 0.4, 1]]); }
+        pyramid(0.66, 0.36, 1, 0.6, 0.35, 0);  // the lower half of the crown points down...
+        pyramid(0.66, 1.0, 0.85, 0.6, 1.0, 2); // ...the upper half points up
+    }
+    const data = [];
+    for (const t of tris) {
+        const e1 = t[1].slice(0, 3).map((v, i) => v - t[0][i]), e2 = t[2].slice(0, 3).map((v, i) => v - t[0][i]);
+        let n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+        const cx = (t[0][0] + t[1][0] + t[2][0]) / 3, cy = (t[0][1] + t[1][1] + t[2][1]) / 3, cz = (t[0][2] + t[1][2] + t[2][2]) / 3;
+        const yAxis = t[0][5] === 1 ? cy : kind === 1 ? 0.5 : 0.66;
+        if (n[0] * cx + n[1] * (cy - yAxis) + n[2] * cz < 0) n = n.map(v => -v);
+        const l = Math.hypot(...n) || 1; n = n.map(v => v / l);
+        for (const v of t) data.push(v[0], v[1], v[2], n[0], n[1], n[2], v[3], v[4]);
+    }
+    return new Float32Array(data);
+}
+
 // The rock wall round the edge and the disc under the land.
 const SKIRT_VS = HEADER + `
 uniform mat4 uViewProj;
@@ -294,14 +352,45 @@ export class Renderer {
         this.canvas = canvas;
         this.programs = {
             terrain: program(gl, TERRAIN_VS, TERRAIN_FS), skirt: program(gl, SKIRT_VS, SKIRT_FS), figure: program(gl, FIGURE_VS, FIGURE_FS),
-            glow: program(gl, GLOW_VS, GLOW_FS), cloud: program(gl, CLOUD_VS, CLOUD_FS), sky: program(gl, SKY_VS, SKY_FS), tint: program(gl, SKY_VS, TINT_FS),
+            glow: program(gl, GLOW_VS, GLOW_FS), tree: program(gl, TREE_VS, TREE_FS), cloud: program(gl, CLOUD_VS, CLOUD_FS), sky: program(gl, SKY_VS, SKY_FS), tint: program(gl, SKY_VS, TINT_FS),
         };
         this.models = null;
         this.skies = new Map();
         this.skyTexture = null;
         this.surface = { heights: null, classes: null, res: 0, key: null };
         this.buildMeshes();
+        this.trees = [1, 0].map(kind => this.makeTreeMesh(kind));
         this.emptyVao = gl.createVertexArray();
+    }
+
+    makeTreeMesh(kind) {
+        const gl = this.gl, p = this.programs.tree, data = treeShape(kind);
+        const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+        const mesh = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, mesh); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+        const at = (name, size, offset) => { const l = gl.getAttribLocation(p.p, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 32, offset * 4); return l; };
+        at('aPos', 3, 0); at('aNormal', 3, 3); at('aBendPart', 2, 6);
+        const inst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, inst);
+        const ia = (name, size, offset) => { const l = gl.getAttribLocation(p.p, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 36, offset * 4); gl.vertexAttribDivisor(l, 1); };
+        ia('iBase', 3, 0); ia('iSize', 2, 3); ia('iColour', 3, 5); ia('iPhase', 1, 8);
+        gl.bindVertexArray(null);
+        return { vao, inst, count: data.length / 8 };
+    }
+
+    drawTrees(f) {
+        const t = f.trees; if (!t) return;
+        const gl = this.gl, p = this.programs.tree;
+        gl.useProgram(p.p);
+        gl.uniformMatrix4fv(p.u.uViewProj, false, f.viewProj);
+        gl.uniform3fv(p.u.uLight, f.light);
+        gl.uniform1f(p.u.uTime, t.time % 100000); gl.uniform1f(p.u.uSway, t.sway); gl.uniform2f(p.u.uWind, t.windX, t.windZ);
+        gl.disable(gl.CULL_FACE);
+        [[this.trees[0], t.conifer, t.nConifer], [this.trees[1], t.broad, t.nBroad]].forEach(([mesh, data, n]) => {
+            if (!n) return;
+            gl.bindVertexArray(mesh.vao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.inst); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+            gl.drawArraysInstanced(gl.TRIANGLES, 0, mesh.count, n);
+        });
+        gl.bindVertexArray(null);
     }
 
     buildMeshes() {
@@ -508,6 +597,9 @@ export class Renderer {
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, (this.skirtSegments + 1) * 2);
             gl.enable(gl.CULL_FACE);
         }
+
+        // Trees
+        this.drawTrees(f);
 
         // Figures
         if (this.models) {

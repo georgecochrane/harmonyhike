@@ -7,6 +7,7 @@ const LAND_NAMES = ['Nature', 'Farmland', 'Town', 'Water'];
 const LAND_COLOURS = ['#5a6e3a', '#b2c45c', '#c4ac94', '#367ac4'];
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
+import { leafState } from './season.js';
 Object.assign(View.prototype, {
     skyNames: SKIES,
 
@@ -73,12 +74,49 @@ Object.assign(View.prototype, {
         f.tint = daylight < 1 ? [8 / 255, 14 / 255, 40 / 255, 0.62 * (1 - daylight)] : null;
         f.camRight = new Float32Array(f.right); f.camUp = new Float32Array(f.up);
 
+        f.trees = this.options.trees === false ? null : this.buildTrees(f, now);
         const items = this.buildFigures(f, dt, now);
         f.hikers = items.hikers; f.animals = items.animals; f.glows = items.glows;
         f.clouds = this.buildClouds(f, dt, light, daylight);
         this.reportWater(f, now);
         r.render(f);
         this.drawOverlay(f, items, dpr);
+    },
+
+    // The forest for the land being drawn: per tree, where it stands, how big, and its colours for the season (data for the renderer's instancing).
+    buildTrees(f, now) {
+        const surface = f.surface;
+        if (!surface.classes) return null;
+        if (surface.trees === undefined) surface.trees = this.treeGen ? this.treeGen(surface) : null;
+        const list = surface.trees;
+        if (!list || !list.length) return null;
+        const n = list.length / 6, leaves = leafState(this.coarse.lat), w = this.weather || { windMetersPerSecond: 3, windFromDegrees: 270 };
+        const toward = (w.windFromDegrees + 180) * Math.PI / 180;
+        const sway = clamp(0.03 + 0.012 * w.windMetersPerSecond, 0.03, 0.13);
+        const baseH = 1.3 * f.hikerHeight;
+        const conifer = new Float32Array(n * 9), broad = new Float32Array(n * 9);
+        let nc = 0, nb = 0;
+        const mix = (a, b, t) => a + (b - a) * t;
+        for (let i = 0; i < n; ++i) {
+            const gx = list[i * 6], gy = list[i * 6 + 1], size = list[i * 6 + 2], kind = list[i * 6 + 3], hue = list[i * 6 + 4], phase = list[i * 6 + 5];
+            const x = (gx - f.centreGX) / f.gridPerUnit, z = (gy - f.centreGY) / f.gridPerUnit;
+            if (x * x + z * z > 0.98) continue;
+            let r, g, b, height, radius;
+            const bare = kind === 1 ? 0 : 1 - leaves.foliage;
+            if (kind === 1) { r = 0.10 + 0.06 * hue; g = 0.30 + 0.08 * hue; b = 0.19 + 0.05 * hue; height = baseH * size * 1.25; radius = height * 0.30; }
+            else {
+                r = 0.22 + 0.08 * hue; g = 0.48 + 0.10 * hue; b = 0.18;
+                const sp = leaves.spring * 0.8; r = mix(r, 0.50, sp); g = mix(g, 0.72, sp); b = mix(b, 0.24, sp);
+                const t = hue < 0.4 ? [0.90, 0.70, 0.14] : hue < 0.75 ? [0.85, 0.42, 0.12] : [0.70, 0.20, 0.12];
+                r = mix(r, t[0], leaves.autumn); g = mix(g, t[1], leaves.autumn); b = mix(b, t[2], leaves.autumn);
+                r = mix(r, 0.40, bare); g = mix(g, 0.34, bare); b = mix(b, 0.28, bare);
+                height = baseH * size * (1 - 0.25 * bare); radius = height * 0.36 * (1 - 0.45 * bare);
+            }
+            const arr = kind === 1 ? conifer : broad, at = (kind === 1 ? nc++ : nb++) * 9;
+            arr[at] = x; arr[at + 1] = f.surfaceY(x, z); arr[at + 2] = z; arr[at + 3] = height; arr[at + 4] = radius;
+            arr[at + 5] = r; arr[at + 6] = g; arr[at + 7] = b; arr[at + 8] = phase;
+        }
+        return { conifer: conifer.subarray(0, nc * 9), nConifer: nc, broad: broad.subarray(0, nb * 9), nBroad: nb, sway, windX: Math.sin(toward), windZ: -Math.cos(toward), time: now / 1000 };
     },
 
     buildFigures(f, dt, now) {

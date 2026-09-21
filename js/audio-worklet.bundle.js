@@ -69,6 +69,23 @@ async function createCore (wasmBytes, sampleRate) {
             return events;
         },
 
+        // Where the trees go on a land: a Float32Array of 6 numbers per tree (gridX, gridY, size, kind, hue, phase). Same code the simulation walks around.
+        generateTrees (lat, lon, radiusMeters, res, heights, classes, minH, maxH) {
+            const hp = x.ts_alloc (heights.length * 4); f32 (hp, heights.length).set (heights);
+            const cp = x.ts_alloc (classes.length); u8 (cp, classes.length).set (classes);
+            let capacity = 3000, result = null;
+            for (;;) {
+                const op = x.ts_alloc (capacity * 6 * 4);
+                const n = x.ts_generate_trees (lat, lon, radiusMeters, res, hp, cp, minH, maxH, op, capacity);
+                if (n >= 0) result = Float32Array.from (f32 (op, n * 6));
+                x.ts_free (op);
+                if (n >= 0) break;
+                capacity = -n + 16;
+            }
+            x.ts_free (hp); x.ts_free (cp);
+            return result;
+        },
+
         installTerrain (lat, lon, radiusMeters, res, heights, classes, animalDensity, panEast = 0, panSouth = 0) {
             const hp = x.ts_alloc (heights.length * 4); f32 (hp, heights.length).set (heights);
             let cp = 0;
