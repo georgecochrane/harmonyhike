@@ -374,6 +374,7 @@ function wireButtons() {
 }
 
 $('start-btn').addEventListener('click', async () => {
+    engine.prepare(); // (must happen inside the tap, before anything is awaited, or phones keep the sound off)
     $('start-btn').disabled = true; $('start-btn').textContent = 'Starting...';
     try {
         await boot();
@@ -384,6 +385,11 @@ $('start-btn').addEventListener('click', async () => {
         if (Array.isArray(settings.hikers) && settings.hikers.length && !new URLSearchParams(location.search).has('hikers')) { engine.send('importHikers', { records: settings.hikers }); settings.numHikers = settings.hikers.length; engine.setParam('numHikers', settings.numHikers); }
         else engine.setParam('numHikers', settings.numHikers);
         $('start').classList.add('hidden');
+        // If the sound is still not running (some phones need one more touch), say so, and any touch on the pill turns it on.
+        const pill = el('button', { id: 'sound-pill', text: 'Sound is off - tap here to turn it on', onclick: () => engine.context?.resume?.() });
+        document.body.append(pill);
+        const showPill = () => pill.classList.toggle('show', !!engine.context && engine.context.state !== undefined && engine.context.state !== 'running' && settings.outputMode !== 0);
+        engine.on('state', showPill); setInterval(showPill, 1500); setTimeout(showPill, 400);
         renderHikerPanel();
         const q = new URLSearchParams(location.search);
         if (q.has('page')) pages.show(parseInt(q.get('page'), 10));

@@ -8,7 +8,7 @@ export class Engine {
         this.node = null;
         this.nextId = 1;
         this.replies = new Map();
-        this.listeners = { snapshot: [], midi: [], presets: [] };
+        this.listeners = { snapshot: [], midi: [], presets: [], state: [] };
         this.presets = [];
         this.ready = false;
     }
@@ -16,10 +16,26 @@ export class Engine {
     on(type, fn) { this.listeners[type].push(fn); }
     emit(type, ...args) { for (const fn of this.listeners[type]) fn(...args); }
 
+    // Phones only let a page start sound from inside the tap itself, before anything is awaited, so this is called first thing in the Start click:
+    // it makes the audio context, wakes it, plays a moment of silence (which unlocks iOS), and asks iOS to play even with the silent switch on.
+    prepare() {
+        if (this.context || new URLSearchParams(location.search).has('nodevice')) return;
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        this.context = new Ctx({ latencyHint: 'interactive' });
+        this.context.resume?.().catch(() => {});
+        try { const b = this.context.createBuffer(1, 1, 22050), s = this.context.createBufferSource(); s.buffer = b; s.connect(this.context.destination); s.start(0); } catch (e) { /* fine */ }
+        // If the browser suspends it again (a call, the screen locking, a tab switch), the next touch wakes it.
+        const wake = () => { if (this.context && this.context.state !== 'running') this.context.resume?.().catch(() => {}); };
+        for (const type of ['pointerdown', 'touchend', 'keydown', 'click']) document.addEventListener(type, wake, { passive: true });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+        this.context.onstatechange = () => this.emit('state', this.context.state);
+    }
+
     // Must be called from a click or key press (browsers won't start audio otherwise).
     async start(params) {
         if (new URLSearchParams(location.search).has('nodevice')) return this.startWithoutDevice(params);
-        this.context = new AudioContext({ latencyHint: 'interactive' });
+        this.prepare();
         await this.context.audioWorklet.addModule('js/audio-worklet.bundle.js');
         this.node = new AudioWorkletNode(this.context, 'harmonyhike', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
         this.node.connect(this.context.destination);

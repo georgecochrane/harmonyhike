@@ -1,6 +1,7 @@
 // The map view: the camera and the circular window on the land (a port of the desktop TerrainView's maths), turning what the simulation
 // reports into something for the renderer to draw, and the mouse handling. Window coordinates are -1..1 across the map; x is east, z
 // is south, y is up.
+import { flattenWater } from './terrain.js';
 
 const TAU = Math.PI * 2, HALF_PI = Math.PI / 2;
 const K = {
@@ -75,7 +76,7 @@ export class View {
         this.waterKey = '';
     }
     setWorld(surface) {
-        this.world = { ...surface, spacing: 2 * surface.radius / (surface.res - 1) };
+        this.world = { ...surface, heights: flattenWater(surface.heights, surface.classes, surface.res), spacing: 2 * surface.radius / (surface.res - 1) };
     }
     sampleRange(s) {
         let lo = Infinity, hi = -Infinity;

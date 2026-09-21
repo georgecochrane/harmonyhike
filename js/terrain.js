@@ -71,6 +71,48 @@ function despikeTile(heights, size, metresPerPixel) {
     return heights;
 }
 
+// For drawing: lays water flat. Every water vertex (class 3) is set to a smooth surface (the average of the water around it, never higher than the
+// nearby shore), so lakes are level and rivers slope gently instead of showing the shape of the bed. Same rule as TerrainGrid::flattenWater in the app.
+export function flattenWater(heights, classes, n) {
+    if (!classes || classes.length !== heights.length || n < 8) return heights;
+    const count = n * n, radius = Math.max(3, Math.floor(n / 40)), WATER = 3;
+    const out = Float32Array.from(heights);
+    let sum = new Float64Array(count), weight = new Float64Array(count), tmp = new Float64Array(count);
+    for (let i = 0; i < count; ++i) if (classes[i] === WATER) { sum[i] = heights[i]; weight[i] = 1; }
+    const blur = (a, alongX) => {
+        for (let line = 0; line < n; ++line) {
+            let running = 0;
+            for (let k = -radius; k < n + radius; ++k) {
+                const add = k + radius, drop = k - radius - 1;
+                if (add >= 0 && add < n) running += a[alongX ? line * n + add : add * n + line];
+                if (drop >= 0 && drop < n) running -= a[alongX ? line * n + drop : drop * n + line];
+                if (k >= 0 && k < n) tmp[alongX ? line * n + k : k * n + line] = running;
+            }
+        }
+        const t = tmp; tmp = a; return t;
+    };
+    sum = blur(sum, true); sum = blur(sum, false); weight = blur(weight, true); weight = blur(weight, false);
+    let shore = new Float32Array(count).fill(1e30), scratch = new Float32Array(count);
+    for (let i = 0; i < count; ++i) if (classes[i] !== WATER) shore[i] = heights[i];
+    for (let pass = 0; pass < 2; ++pass) {
+        for (let y = 0; y < n; ++y) for (let x = 0; x < n; ++x) {
+            let m = 1e30;
+            for (let d = -2; d <= 2; ++d) {
+                const xx = pass === 0 ? x + d : x, yy = pass === 0 ? y : y + d;
+                if (xx >= 0 && yy >= 0 && xx < n && yy < n) m = Math.min(m, shore[yy * n + xx]);
+            }
+            scratch[y * n + x] = m;
+        }
+        [shore, scratch] = [scratch, shore];
+    }
+    for (let i = 0; i < count; ++i) if (classes[i] === WATER && weight[i] > 0) {
+        let level = sum[i] / weight[i];
+        if (shore[i] < 1e29) level = Math.min(level, shore[i]);
+        out[i] = level;
+    }
+    return out;
+}
+
 export class TerrainSource {
     constructor() { this.elevationTiles = new Map(); this.mapTiles = new Map(); }
 
