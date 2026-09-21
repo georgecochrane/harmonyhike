@@ -51,6 +51,26 @@ async function loadTile(cache, url, decode) {
     return tile;
 }
 
+// The public elevation tiles now and then contain isolated wrong pixels (one cell, or a cluster of two or three, thousands of metres
+// off), which show up as needles. Replace any pixel that sticks out from most of its eight neighbours by more than a slope no real
+// hillside has (or 40 m, whichever is more) with the median of those neighbours. Same rule as Source/Terrain/Despike.h.
+function despikeTile(heights, size, metresPerPixel) {
+    const allowed = Math.max(40, 3 * metresPerPixel), source = Float32Array.from(heights), n = [];
+    for (let y = 0; y < size; ++y) for (let x = 0; x < size; ++x) {
+        n.length = 0;
+        for (let dy = -1; dy <= 1; ++dy) for (let dx = -1; dx <= 1; ++dx) {
+            const nx = x + dx, ny = y + dy;
+            if ((dx === 0 && dy === 0) || nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+            n.push(source[ny * size + nx]);
+        }
+        if (n.length < 3) continue;
+        n.sort((a, b) => a - b);
+        const v = source[y * size + x], high = n[Math.max(0, n.length - 3)], low = n[Math.min(n.length - 1, 2)];
+        if (v > high + allowed || v < low - allowed || !Number.isFinite(v)) heights[y * size + x] = n[n.length >> 1];
+    }
+    return heights;
+}
+
 export class TerrainSource {
     constructor() { this.elevationTiles = new Map(); this.mapTiles = new Map(); }
 
@@ -77,7 +97,7 @@ export class TerrainSource {
             jobs.push(loadTile(this.elevationTiles, url, px => {
                 const out = new Float32Array(TILE * TILE);
                 for (let i = 0; i < TILE * TILE; ++i) out[i] = px[i * 4] * 256 + px[i * 4 + 1] + px[i * 4 + 2] / 256 - 32768;
-                return out;
+                return despikeTile(out, TILE, EARTH / (TILE * 2 ** zoom));
             }).then(t => tiles.set(key, t)));
         }
         await Promise.all(jobs);
