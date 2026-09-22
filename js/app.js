@@ -20,7 +20,7 @@ const WORLD_MARGIN = 5;
 const DEFAULTS = {
     numHikers: 6, speed: 35, noteSpeed: 0, gaitMatch: 15, simulationRate: 20, animalDensity: 0.3, scaleType: 3, rootNote: 0, minOctave: 3, maxOctave: 5,
     noteLength: 100, noteLengthRandom: 0, favorRoot: 0, velocity: 100, velocityRandom: 0, paused: 0, arpOn: 0, arpPattern: 0, arpRandom: 0, arpRate: 4,
-    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 15, waterLevel: 15, keyMode: 0, keyMinutes: 3, pairs: 1,
+    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 15, waterLevel: 15, keyMode: 0, keyMinutes: 3, keyVolume: 70, pairs: 1,
     // (web only)
     diameterFeet: 5280, terrainDetail: 2, realLight: 0, cloudOpacity: 50,
     showTrees: 1, treeDensity: 60, autoRotate: 0, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
@@ -28,7 +28,7 @@ const DEFAULTS = {
 };
 const CORE_PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'noteLength', 'noteLengthRandom',
     'favorRoot', 'velocity', 'velocityRandom', 'paused', 'arpOn', 'arpPattern', 'arpRandom', 'arpRate', 'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode',
-    'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes', 'pairs'];
+    'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes', 'keyVolume', 'pairs'];
 
 window.__errors = []; window.addEventListener('error', e => window.__errors.push(e.message)); window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
 const settings = { ...DEFAULTS };
@@ -161,7 +161,8 @@ function buildControls() {
                 R('Max Octave', { min: -1, max: 9, format: octaveName }, 'maxOctave')()] },
             { title: 'Key changes', rows: () => [
                 selectRow('Key changes', ['Off', 'Gentle (related keys)', 'Adventurous (any key)', 'Circle of Fifths', 'Circle of Fourths'], S('keyMode'), P('keyMode')),
-                sliderRow('Every', { min: 0.5, max: 10, step: 0.1, format: v => v.toFixed(1) + ' min' }, S('keyMinutes'), P('keyMinutes')),
+                sliderRow('Every', { min: 10 / 60, max: 10, default: 3, ...logSlider(10 / 60, 10), format: v => v < 1 ? Math.round(v * 60) + ' sec' : v.toFixed(1) + ' min' }, S('keyMinutes'), P('keyMinutes')),
+                R('Chord Volume', { min: 0, max: 100, format: offOr('%') }, 'keyVolume')(),
                 el('div', { class: 'row toggle' }, el('span', { text: 'Key now' }), el('span', { id: 'key-now', text: '', style: 'color:var(--dim)' }))] },
             { title: 'Expression', rows: () => [
                 R('Note Length', { min: 5, max: 100, format: v => v >= 100 ? 'Legato' : Math.round(v) + '%' }, 'noteLength')(),

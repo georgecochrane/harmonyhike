@@ -6,7 +6,7 @@
 
 const PARAMS = ['numHikers', 'speed', 'noteSpeed', 'gaitMatch', 'simulationRate', 'animalDensity', 'scaleType', 'rootNote', 'minOctave', 'maxOctave',
     'noteLength', 'noteLengthRandom', 'favorRoot', 'velocity', 'velocityRandom', 'paused', 'arpOn', 'arpPattern', 'arpRandom', 'arpRate',
-    'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode', 'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes', 'pairs'];
+    'arpGate', 'arpDivision', 'syncOn', 'gaitSync', 'gaitDivision', 'outputMode', 'soundVolume', 'animalLevel', 'waterLevel', 'keyMode', 'keyMinutes', 'keyVolume', 'pairs'];
 
 const PROFILE_FIELDS = ['speed', 'noteSpeed', 'scaleType', 'rootNote', 'minOctave', 'maxOctave', 'velocityScale', 'velocityRandom',
     'favorRoot', 'midiChannel', 'soundPreset', 'daring', 'linearity', 'preference'];
