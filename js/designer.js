@@ -1,6 +1,6 @@
 // The Sound Designer: edit the synth presets (oscillators, envelope, filter, vibrato, reverb and echo), tie sounds to what the hikers
 // feel with the modulation grid, tune the shared reverb, audition, and save or load presets as JSON (the same files the desktop app uses).
-import { el } from './ui.js';
+import { el, fader } from './ui.js';
 
 // Order of the numbers in a preset (matches the core).
 const FIELDS = ['wave1', 'wave2', 'mix2', 'ratio2', 'detuneCents', 'noise', 'attack', 'decay', 'sustain', 'release', 'cutoffHz', 'resonance', 'filterEnv',
@@ -56,12 +56,11 @@ export function openSoundDesigner(engine) {
         const waveSelect = idx => el('select', { onchange: e => { v[idx] = +e.target.value; changed(); } }, ['Sine', 'Triangle', 'Saw', 'Square'].map((t, i) => el('option', { value: i, text: t, ...(i === v[idx] ? { selected: '' } : {}) })));
         const sliderRow = (label, get, set, min, max, step, skew, suffix) => {
             const c = skewed(min, max, skew);
-            const range = el('input', { type: 'range', min: 0, max: 1, step: 0.0005, value: c.toPos(get()) });
             const val = el('span', { class: 'val' });
-            const fmt = x => (Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(step < 0.01 ? 3 : 2)) + suffix, snap = x => Math.min(max, Math.max(min, Math.round(x / step) * step));
-            val.textContent = fmt(get());
-            range.addEventListener('input', () => { const x = snap(c.fromPos(+range.value)); set(x); val.textContent = fmt(x); });
-            return el('div', { class: 'row' }, el('span', { text: label }), range, val);
+            const fmt = x => (Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(step < 0.01 ? 3 : 2)) + suffix;
+            const track = fader({ min, max, step, toPos: c.toPos, fromPos: c.fromPos }, get, set, () => { val.textContent = fmt(get()); });
+            track.setAttribute('aria-label', label);
+            return el('div', { class: 'row' }, el('span', { text: label }), track, val);
         };
         const rows = ROWS.map(([label, key, min, max, step, skew, suffix]) => {
             const idx = FIELDS.indexOf(key);

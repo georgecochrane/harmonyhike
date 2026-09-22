@@ -13,20 +13,64 @@ export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A',
 export const SCALES = ['Major', 'Natural Minor', 'Pentatonic Major', 'Pentatonic Minor', 'Chromatic'];
 export const DIVISIONS = ['1/1', '1/2', '1/4', '1/8', '1/8T', '1/16', '1/16T', '1/32'];
 
-// A slider row: label, slider, and a value read-out. `spec` says how the slider maps to a value.
-export function sliderRow(label, spec, get, set) {
+// A vertical bar fader: drag anywhere on it to jump there (no thumb to grab), double-click to reset to `spec.default`,
+// arrow/Home/End/PageUp/PageDown to nudge it from the keyboard. `spec` says how the bar's height maps to a value
+// (min/max/step, optionally a toPos/fromPos curve for a log or skewed control, same convention as before).
+// `onChange` is called after every interaction, in addition to the bar repainting itself, so a caller can keep its
+// own value read-out in sync. Returns the bar element itself, with a `.refresh()` that repaints it from `get()`.
+export function fader(spec, get, set, onChange) {
     const min = spec.min, max = spec.max, step = spec.step ?? 1;
     const toPos = spec.toPos ?? (v => v), fromPos = spec.fromPos ?? (p => p);
-    const range = el('input', { type: 'range', min: toPos(min), max: toPos(max), step: spec.posStep ?? (spec.toPos ? 0.001 : step) });
+    const tmin = toPos(min), tmax = toPos(max);
+    const fraction = v => (toPos(v) - tmin) / (tmax - tmin);
+    const fromFraction = f => {
+        const raw = fromPos(tmin + f * (tmax - tmin));
+        return Math.min(max, Math.max(min, +(Math.round(raw / step) * step).toFixed(6)));
+    };
+    const fill = el('div', { class: 'fader-fill' }, el('div', { class: 'fader-cap' }));
+    const track = el('div', { class: 'fader-track', tabindex: '0', role: 'slider' }, fill);
+    if (spec.default !== undefined) {
+        const tick = el('div', { class: 'fader-default-tick' });
+        tick.style.bottom = (fraction(spec.default) * 100) + '%';
+        track.append(tick);
+    }
+    const commit = v => { set(v); track.refresh(); onChange?.(); };
+    const dragTo = clientY => {
+        const r = track.getBoundingClientRect();
+        commit(fromFraction(Math.min(1, Math.max(0, 1 - (clientY - r.top) / r.height))));
+    };
+    track.addEventListener('pointerdown', e => { track.setPointerCapture(e.pointerId); dragTo(e.clientY); });
+    track.addEventListener('pointermove', e => { if (e.buttons) dragTo(e.clientY); });
+    track.addEventListener('dblclick', () => { if (spec.default !== undefined) commit(spec.default); });
+    track.addEventListener('keydown', e => {
+        const big = step * 10;
+        let v = get();
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') v = Math.min(max, v + step);
+        else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') v = Math.max(min, v - step);
+        else if (e.key === 'PageUp') v = Math.min(max, v + big);
+        else if (e.key === 'PageDown') v = Math.max(min, v - big);
+        else if (e.key === 'Home') v = min;
+        else if (e.key === 'End') v = max;
+        else return;
+        e.preventDefault(); commit(+v.toFixed(6));
+    });
+    track.refresh = () => {
+        const v = get();
+        fill.style.height = (fraction(v) * 100) + '%';
+        track.setAttribute('aria-valuenow', v); track.setAttribute('aria-valuemin', min); track.setAttribute('aria-valuemax', max);
+    };
+    track.refresh(); onChange?.();
+    return track;
+}
+
+// A slider row: label, fader, and a value read-out. `spec` says how the fader maps to a value.
+export function sliderRow(label, spec, get, set) {
     const val = el('span', { class: 'val' });
     const fmt = spec.format ?? (v => String(Math.round(v * 100) / 100));
-    const snap = v => { const s = Math.round(v / step) * step; return Math.min(max, Math.max(min, +s.toFixed(6))); };
-    const show = () => { const v = get(); range.value = toPos(v); val.textContent = fmt(v); };
-    range.addEventListener('input', () => { const v = snap(fromPos(parseFloat(range.value))); set(v); val.textContent = fmt(v); });
-    range.addEventListener('dblclick', () => { if (spec.default !== undefined) { set(spec.default); show(); } });
-    show();
-    const row = el('div', { class: 'row' }, el('span', { text: label }), range, val);
-    row.refresh = show;
+    const track = fader(spec, get, set, () => { val.textContent = fmt(get()); });
+    track.setAttribute('aria-label', label);
+    const row = el('div', { class: 'row' }, el('span', { text: label }), track, val);
+    row.refresh = () => { track.refresh(); val.textContent = fmt(get()); };
     return row;
 }
 

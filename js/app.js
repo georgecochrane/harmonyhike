@@ -5,7 +5,7 @@ import { View, metresBetween, offsetLatLon } from './view.js';
 import './scene.js';
 import { TerrainSource, proceduralHeights, geocode, fetchWeather, parseLatLon } from './terrain.js';
 import { MidiBridge } from './midi.js';
-import { el, buildPages, sliderRow, selectRow, toggleRow, buttonRow, twoSelectRow, NOTE_NAMES, SCALES, DIVISIONS } from './ui.js';
+import { el, buildPages, sliderRow, fader, selectRow, toggleRow, buttonRow, twoSelectRow, NOTE_NAMES, SCALES, DIVISIONS } from './ui.js';
 import { openSoundDesigner, loadSavedSounds, currentSounds } from './designer.js';
 import { openAbout, openTip } from './about.js';
 import { openMidiHelp } from './midihelp.js';
@@ -160,7 +160,7 @@ function buildControls() {
                 R('Min Octave', { min: -1, max: 9, format: octaveName }, 'minOctave')(),
                 R('Max Octave', { min: -1, max: 9, format: octaveName }, 'maxOctave')()] },
             { title: 'Key changes', rows: () => [
-                selectRow('Key changes', ['Off', 'Gentle (related keys)', 'Adventurous (any key)'], S('keyMode'), P('keyMode')),
+                selectRow('Key changes', ['Off', 'Gentle (related keys)', 'Adventurous (any key)', 'Circle of Fifths', 'Circle of Fourths'], S('keyMode'), P('keyMode')),
                 sliderRow('Every', { min: 0.5, max: 10, step: 0.1, format: v => v.toFixed(1) + ' min' }, S('keyMinutes'), P('keyMinutes')),
                 el('div', { class: 'row toggle' }, el('span', { text: 'Key now' }), el('span', { id: 'key-now', text: '', style: 'color:var(--dim)' }))] },
             { title: 'Expression', rows: () => [
@@ -252,10 +252,10 @@ function renderHikerPanel() {
         const edit = changes => engine.send('setProfiles', { channels: selected, changes });
         const field = (label, node) => el('div', { class: 'field' }, el('label', { text: label }), node);
         const slider = (min, max, value, fmt, onChange, step = 1) => {
-            const range = el('input', { type: 'range', min, max, step, value });
+            let current = value;
             const val = el('span', { class: 'val', text: fmt(value) });
-            range.addEventListener('input', () => { val.textContent = fmt(+range.value); onChange(+range.value); });
-            return el('div', { class: 'hs' }, range, val);
+            const track = fader({ min, max, step }, () => current, v => { current = v; onChange(v); }, () => { val.textContent = fmt(current); });
+            return el('div', { class: 'hs' }, track, val);
         };
         const sect = t => el('div', { class: 'sect', text: t });
         const g = k => settings[k];
