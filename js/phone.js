@@ -69,32 +69,70 @@ export function initPhone(view, { onView } = {}) {
     function build() {
         if (built) return; built = true;
         document.body.dataset.view = '';
+        document.body.dataset.hikersub = 'all';
         const sheet = el('div', { id: 'sheet' }, el('div', { id: 'grip', title: 'Put the panel away' }, el('i')));
         const dockNode = el('div', { id: 'dock', class: 'glass' });
         const extras = el('div', { id: 'dock-extra' },
             el('button', { 'data-view': 'place', text: 'Place', onclick: () => setView(sheetView === 'place' ? null : 'place') }),
-            el('button', { 'data-view': 'view', text: 'View', onclick: () => setView(sheetView === 'view' ? null : 'view') }),
-            el('button', { 'data-view': 'hiker', text: 'Hiker', onclick: () => setView(sheetView === 'hiker' ? null : 'hiker') }));
+            el('button', { 'data-view': 'view', text: 'View', onclick: () => setView(sheetView === 'view' ? null : 'view') }));
         const select = el('button', { id: 'select-btn', text: 'Select', onclick: () => { view.selectMode = !view.selectMode; select.classList.toggle('on', view.selectMode); } });
         $('map').append(select);
         const grip = sheet.firstChild;
-        // Move the desktop pieces into the sheet and dock; they are moved back if the window grows.
-        const move = (node, to) => { homes.push({ node, parent: node.parentNode, next: node.nextSibling }); to.append(node); };
-        move($('pause'), $('map'));   // Pause / Resume lives in the map's top left corner, always in reach
-        move($('tabs'), dockNode);
+        // Move the desktop pieces into the sheet and dock; they are moved back if the window grows. `sheet` isn't attached to the
+        // document yet at this point, so getElementById can no longer find a node once it's been moved into it; keep our own
+        // reference (`moved`) to each one instead of looking it up again.
+        const moved = {};
+        const move = (id, to) => { const node = $(id); homes.push({ node, parent: node.parentNode, next: node.nextSibling }); to.append(node); return (moved[id] = node); };
+        move('pause', $('map'));   // Pause / Resume lives in the map's top left corner, always in reach
+        move('tabs', dockNode);
         dockNode.prepend(extras);
-        for (const id of ['top', 'modes', 'pages', 'hiker-panel']) move($(id), sheet);
+        for (const id of ['top', 'modes', 'pages', 'hiker-panel']) move(id, sheet);
+        // The "Hikers" tab covers both the global walking controls and one selected hiker at a time; on the desktop's wider
+        // layout these are a page and a separate side panel, but on the phone that reads as two confusingly similar tabs
+        // ("Hiker" and "Hikers"), so here they share one tab with an "All" / "Selected" switch inside it.
+        const hikerSub = el('div', { id: 'hiker-subtabs' },
+            el('button', { text: 'All', class: 'on', onclick: () => setHikerSub('all') }),
+            el('button', { text: 'Selected', onclick: () => setHikerSub('selected') }));
+        sheet.insertBefore(hikerSub, moved.pages);
         $('app').append(sheet, dockNode);
         if (window.ResizeObserver) { const ro = new ResizeObserver(fit); ro.observe(sheet); ro.observe(dockNode); }
+
+        const setHikerSub = mode => {
+            document.body.dataset.hikersub = mode;
+            for (const b of hikerSub.querySelectorAll('button')) b.classList.toggle('on', b.textContent.toLowerCase() === mode);
+        };
+        const hikersTabButton = () => [...$('tabs').querySelectorAll('button')].find(b => b.textContent === 'Hikers');
+        let onHikersTab = false;
+        // A body class (not an inline style) so it plays nicely with the display:none every #sheet child gets by default;
+        // an inline style would win over that regardless of which tab is showing.
+        const syncHikerSubVisibility = () => {
+            document.body.classList.toggle('hikers-tab', onHikersTab);
+            if (!onHikersTab) document.body.dataset.hikersub = 'all'; // leaving the tab: next visit starts on "All" again, unless a hiker is picked
+        };
         // Tabs from the desktop layout open the settings sheet.
-        $('tabs').addEventListener('click', e => { if (e.target.closest('button')) setView(sheetView === 'pages' && e.target.classList.contains('was-on') ? null : 'pages'); }, true);
+        $('tabs').addEventListener('click', e => {
+            const b = e.target.closest('button'); if (!b) return;
+            onHikersTab = b.textContent === 'Hikers';
+            syncHikerSubVisibility();
+            if (onHikersTab && document.body.dataset.hikersub !== 'selected') setHikerSub('all');
+            setView(sheetView === 'pages' && b.classList.contains('was-on') ? null : 'pages');
+        }, true);
         $('tabs').addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (b) b.classList.toggle('was-on', sheetView === 'pages' && b.classList.contains('on')); }, true);
         // Swipe the grip down (or tap it) to put the sheet away.
         let startY = null;
         grip.addEventListener('pointerdown', e => { startY = e.clientY; grip.setPointerCapture(e.pointerId); });
         grip.addEventListener('pointerup', e => { if (startY !== null && (Math.abs(e.clientY - startY) < 8 || e.clientY - startY > 24)) setView(null); startY = null; });
         view.on('tap', () => { if (!small.matches) return; if (sheetView) setView(null); else dock(!isDockOpen()); if (!isDockOpen()) setView(null); });
-        view.on('selection', list => { if (!small.matches) return; if (list.length) { dock(true); setView('hiker'); } else if (sheetView === 'hiker') setView(null); });
+        view.on('selection', list => {
+            if (!small.matches) return;
+            if (list.length) {
+                onHikersTab = true; syncHikerSubVisibility(); setHikerSub('selected');
+                hikersTabButton()?.click(); // loads the Hikers page's content into #pages (harmless: it stays hidden behind "Selected")
+                dock(true); setView('pages');
+            } else if (sheetView === 'pages' && onHikersTab && document.body.dataset.hikersub === 'selected') {
+                setView(null);
+            }
+        });
     }
 
     function unbuild() {

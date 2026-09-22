@@ -20,7 +20,7 @@ const WORLD_MARGIN = 5;
 const DEFAULTS = {
     numHikers: 6, speed: 35, noteSpeed: 0, gaitMatch: 15, simulationRate: 20, animalDensity: 0.3, scaleType: 3, rootNote: 0, minOctave: 3, maxOctave: 5,
     noteLength: 100, noteLengthRandom: 0, favorRoot: 0, velocity: 100, velocityRandom: 0, paused: 0, arpOn: 0, arpPattern: 0, arpRandom: 0, arpRate: 4,
-    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 60, waterLevel: 60, keyMode: 0, keyMinutes: 3, pairs: 1,
+    arpGate: 70, arpDivision: 5, syncOn: 0, gaitSync: 0, gaitDivision: 5, outputMode: 1, soundVolume: 70, animalLevel: 15, waterLevel: 15, keyMode: 0, keyMinutes: 3, pairs: 1,
     // (web only)
     diameterFeet: 5280, terrainDetail: 2, realLight: 0, cloudOpacity: 50,
     showTrees: 1, treeDensity: 60, autoRotate: 0, overlayGlows: 1, overlayNumbers: 1, overlayCompass: 1, overlayLegend: 1, overlayCaptions: 1,
@@ -55,7 +55,10 @@ function setSetting(name, value) {
         case 'cloudOpacity': view.options.cloudOpacity = value / 100; break;
         case 'terrainDetail': view.world = null; world.pending = false; world.failedAt = -1e9; break;
         case 'overlayGlows': case 'overlayNumbers': case 'overlayCompass': case 'overlayLegend': case 'overlayCaptions':
-            view.options.overlays[name.slice(7).toLowerCase()] = !!value; break;
+            view.options.overlays[name.slice(7).toLowerCase()] = !!value;
+            // With the compass off, a button that would otherwise sit below it (on a touch device, not a phone; Select stays put on the phone) moves up into its corner.
+            if (name === 'overlayCompass') document.body.classList.toggle('no-compass', !value);
+            break;
         case 'outputMode': if (value === 1) midi.allNotesOff(); break;
         case 'paused': $('pause').textContent = value ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', !!value); break;
     }
@@ -295,6 +298,7 @@ async function boot() {
     view.options.realLight = !!settings.realLight; view.options.cloudOpacity = settings.cloudOpacity / 100;
     view.wantedRadius = 0.5 * settings.diameterFeet * FEET;
     for (const k of ['Glows', 'Numbers', 'Compass', 'Legend', 'Captions']) view.options.overlays[k.toLowerCase()] = !!settings['overlay' + k];
+    document.body.classList.toggle('no-compass', !settings.overlayCompass);
     await renderer.loadAssets();
 
     initPhone(view);
@@ -351,7 +355,6 @@ function wireButtons() {
     $('mode-rotate').onclick = () => { view.mode = 'rotate'; $('mode-rotate').classList.add('on'); $('mode-manage').classList.remove('on'); };
     $('mode-manage').onclick = () => { view.mode = 'manage'; $('mode-manage').classList.add('on'); $('mode-rotate').classList.remove('on'); };
     $('reset-view').onclick = () => view.resetView();
-    $('zoom-in').onclick = () => view.zoomBy(1.25); $('zoom-out').onclick = () => view.zoomBy(0.8);
     $('pause').onclick = () => { setSetting('paused', settings.paused ? 0 : 1); };
     $('pause').textContent = settings.paused ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', !!settings.paused);
     $('fullscreen').onclick = async () => {

@@ -73,6 +73,9 @@ body.phone #app{position:fixed;left:var(--vv-left,0px);top:var(--vv-top,0px);wid
 body.phone #stage{position:absolute;inset:0;display:block;gap:0}
 body.phone #map{position:absolute;left:0;top:0;right:var(--map-right,0px);bottom:var(--map-bottom,0px);border:0;border-radius:0;transition:right .22s ease,bottom .22s ease}
 body.touch #select-btn{top:calc(66px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right))}
+/* Compass off, on a touch device that isn't a phone (an iPad, say): Select moves up into the corner the compass drew in.
+   On the phone specifically it stays put - the map there is small enough that Select's spot matters more than the compass's. */
+body.touch.no-compass:not(.phone) #select-btn{top:calc(10px + env(safe-area-inset-top))}
 body.phone #dock{position:absolute;left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));z-index:6;display:none;flex-wrap:nowrap;gap:6px;padding:6px;overflow-x:auto;scrollbar-width:none;border-radius:16px}
 body.phone #dock::-webkit-scrollbar{display:none}
 body.phone.dock-open #dock{display:flex}
@@ -89,7 +92,12 @@ body.phone #grip i{width:44px;height:5px;border-radius:3px;background:rgba(255,2
 body.phone #sheet>*:not(#grip){display:none;border:0;border-radius:0;background:none;backdrop-filter:none;margin:0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain}
 body.phone[data-view=place] #sheet #top,body.phone[data-view=view] #sheet #modes{display:flex;flex-wrap:wrap;padding:4px 12px 14px}
 body.phone[data-view=pages] #sheet #pages{display:block;padding:2px 12px 14px}
-body.phone[data-view=hiker] #sheet #hiker-panel{display:flex;width:auto;padding:2px 12px 12px}
+/* The Hikers tab's own All/Selected switch: hidden on every other tab, and swaps #pages (All) for #hiker-panel (Selected) within it. */
+#hiker-subtabs{display:none;gap:6px;padding:10px 12px 0;flex:none}
+#hiker-subtabs button{flex:1;padding:6px 0;text-align:center}
+body.phone.hikers-tab[data-view=pages] #sheet #hiker-subtabs{display:flex}
+body.phone.hikers-tab[data-view=pages][data-hikersub=selected] #sheet #pages{display:none}
+body.phone.hikers-tab[data-view=pages][data-hikersub=selected] #sheet #hiker-panel{display:flex;width:auto;padding:2px 12px 12px}
 body.phone[data-view=place] #top .loc{flex:1 1 100%}
 body.phone #status,body.phone #clock-status{margin-left:0;flex:1 1 100%}
 body.phone #pages .col{max-width:none;min-width:0;padding:0 0 10px}

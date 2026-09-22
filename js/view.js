@@ -191,7 +191,7 @@ export class View {
         el.addEventListener('contextmenu', e => e.preventDefault());
         this.pointers = new Map();
     }
-    isPanning() { const d = this.dragging; return !!d && (d.pan || (d.pinch && d.moved)); }
+    isPanning() { return !!this.dragging; } // any active drag (panning, orbiting, a pinch, moving a hiker...): the caller holds the relief scaling steady while it's true
     zoomBy(factor) { this.zoom = clamp(this.zoom * factor, 0.5, 3); }
     resetView() { this.yaw = 0; this.pitch = K.defaultPitch; this.zoom = 1; }
     local(e) { const r = this.overlay.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }

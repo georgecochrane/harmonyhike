@@ -129,7 +129,7 @@ void main() {
     vec3 world = iBase + vec3(aPos.x * radius, aPos.y * height, aPos.z * radius) + vec3(uWind.x, 0.0, uWind.y) * swing * bend;
     gl_Position = uViewProj * vec4(world, 1.0);
     float lit = max(0.0, dot(normalize(aNormal), uLight));
-    vec3 base = aBendPart.y > 0.5 && aBendPart.y < 1.5 ? vec3(0.30, 0.21, 0.14) : iColour * (aBendPart.y > 1.5 ? 1.07 : aPos.y < 0.5 ? 0.93 : 1.0);
+    vec3 base = aBendPart.y > 0.5 && aBendPart.y < 1.5 ? vec3(0.30, 0.21, 0.14) : iColour * (aBendPart.y > 1.5 ? 1.07 : 1.0);
     vColour = min(vec3(1.0), base * (0.5 + 0.65 * lit));
 }`;
 const TREE_FS = HEADER + `
