@@ -73,9 +73,8 @@ body.phone #app{position:fixed;left:var(--vv-left,0px);top:var(--vv-top,0px);wid
 body.phone #stage{position:absolute;inset:0;display:block;gap:0}
 body.phone #map{position:absolute;left:0;top:0;right:var(--map-right,0px);bottom:var(--map-bottom,0px);border:0;border-radius:0;transition:right .22s ease,bottom .22s ease}
 body.touch #select-btn{top:calc(66px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right))}
-/* Compass off, on a touch device that isn't a phone (an iPad, say): Select moves up into the corner the compass drew in.
-   On the phone specifically it stays put - the map there is small enough that Select's spot matters more than the compass's. */
-body.touch.no-compass:not(.phone) #select-btn{top:calc(10px + env(safe-area-inset-top))}
+/* Compass off: Select moves up into the corner the compass drew in, on any touch device (including the phone). */
+body.touch.no-compass #select-btn{top:calc(10px + env(safe-area-inset-top))}
 body.phone #dock{position:absolute;left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));z-index:6;display:none;flex-wrap:nowrap;gap:6px;padding:6px;overflow-x:auto;scrollbar-width:none;border-radius:16px}
 body.phone #dock::-webkit-scrollbar{display:none}
 body.phone.dock-open #dock{display:flex}
