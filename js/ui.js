@@ -13,8 +13,8 @@ export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A',
 export const SCALES = ['Major', 'Natural Minor', 'Pentatonic Major', 'Pentatonic Minor', 'Chromatic'];
 export const DIVISIONS = ['1/1', '1/2', '1/4', '1/8', '1/8T', '1/16', '1/16T', '1/32'];
 
-// A vertical bar fader: drag anywhere on it to jump there (no thumb to grab), double-click to reset to `spec.default`,
-// arrow/Home/End/PageUp/PageDown to nudge it from the keyboard. `spec` says how the bar's height maps to a value
+// A sideways bar fader: drag anywhere on it to jump there (no thumb to grab), double-click to reset to `spec.default`,
+// arrow/Home/End/PageUp/PageDown to nudge it from the keyboard. `spec` says how the bar's length maps to a value
 // (min/max/step, optionally a toPos/fromPos curve for a log or skewed control, same convention as before).
 // `onChange` is called after every interaction, in addition to the bar repainting itself, so a caller can keep its
 // own value read-out in sync. Returns the bar element itself, with a `.refresh()` that repaints it from `get()`.
@@ -31,16 +31,16 @@ export function fader(spec, get, set, onChange) {
     const track = el('div', { class: 'fader-track', tabindex: '0', role: 'slider' }, fill);
     if (spec.default !== undefined) {
         const tick = el('div', { class: 'fader-default-tick' });
-        tick.style.bottom = (fraction(spec.default) * 100) + '%';
+        tick.style.left = (fraction(spec.default) * 100) + '%';
         track.append(tick);
     }
     const commit = v => { set(v); track.refresh(); onChange?.(); };
-    const dragTo = clientY => {
+    const dragTo = clientX => {
         const r = track.getBoundingClientRect();
-        commit(fromFraction(Math.min(1, Math.max(0, 1 - (clientY - r.top) / r.height))));
+        commit(fromFraction(Math.min(1, Math.max(0, (clientX - r.left) / r.width))));
     };
-    track.addEventListener('pointerdown', e => { track.setPointerCapture(e.pointerId); dragTo(e.clientY); });
-    track.addEventListener('pointermove', e => { if (e.buttons) dragTo(e.clientY); });
+    track.addEventListener('pointerdown', e => { track.setPointerCapture(e.pointerId); dragTo(e.clientX); });
+    track.addEventListener('pointermove', e => { if (e.buttons) dragTo(e.clientX); });
     track.addEventListener('dblclick', () => { if (spec.default !== undefined) commit(spec.default); });
     track.addEventListener('keydown', e => {
         const big = step * 10;
@@ -56,7 +56,7 @@ export function fader(spec, get, set, onChange) {
     });
     track.refresh = () => {
         const v = get();
-        fill.style.height = (fraction(v) * 100) + '%';
+        fill.style.width = (fraction(v) * 100) + '%';
         track.setAttribute('aria-valuenow', v); track.setAttribute('aria-valuemin', min); track.setAttribute('aria-valuemax', max);
     };
     track.refresh(); onChange?.();
